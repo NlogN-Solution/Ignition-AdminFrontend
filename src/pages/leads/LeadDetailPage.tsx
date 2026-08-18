@@ -229,7 +229,7 @@ export function LeadDetailPage() {
                       label="Qualified"
                       value={
                         <>
-                          {formatDate(lead.qualified_at)} by <StaffNameCell userId={lead.} />
+                          {formatDate(lead.qualified_at)} by <StaffNameCell userId={lead.qualified_by} />
                         </>
                       }
                     />
