@@ -4,12 +4,10 @@ import { applicationService } from "@/modules/applications/service";
 import { taskService } from "@/modules/tasks/service";
 import { appointmentService } from "@/modules/appointments/service";
 import { paymentService } from "@/modules/payments/service";
-import { userService } from "@/modules/users/service";
 import { academicService } from "@/modules/academic/service";
-import { ApplicationStatus, PaymentStatus, TaskStatus, UserRole } from "@/types/enums";
+import { ApplicationStatus, PaymentStatus, TaskStatus } from "@/types/enums";
 
 export function useDashboardCounts() {
-  const applicants = useQuery({ queryKey: ["dashboard", "applicants"], queryFn: () => userService.list({ role: UserRole.STUDENT, limit: 1 }) });
   const leads = useQuery({ queryKey: ["dashboard", "leads"], queryFn: () => leadService.list({ limit: 1 }) });
   const rawLeads = useQuery({
     queryKey: ["dashboard", "leads-raw"],
@@ -61,7 +59,10 @@ export function useDashboardCounts() {
   const unassignedCount = unassignedSample.data?.items.filter((l) => !l.assigned_to).length ?? 0;
 
   return {
-    applicants: applicants.data?.total ?? 0,
+    // "Clients" is converted leads — the count this hook already fetches for the
+    // conversion rate. The old "Applicants" tile counted student accounts, a set that
+    // included portal self-signups nobody had worked.
+    clients: convertedCount,
     leads: leads.data?.total ?? 0,
     rawLeads: rawLeads.data?.total ?? 0,
     prospects: prospects.data?.total ?? 0,
@@ -81,7 +82,6 @@ export function useDashboardCounts() {
     courses: courses.data?.total ?? 0,
     revenue,
     isLoading:
-      applicants.isLoading ||
       leads.isLoading ||
       rawLeads.isLoading ||
       prospects.isLoading ||

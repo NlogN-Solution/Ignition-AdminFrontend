@@ -33,14 +33,6 @@ const ACCENT_GLOW_CLASSES: Record<NonNullable<StatCardProps["accent"]>, string> 
   danger: "bg-danger",
 };
 
-const ACCENT_BORDER_HOVER: Record<NonNullable<StatCardProps["accent"]>, string> = {
-  primary: "hover:border-primary/30",
-  success: "hover:border-success/30",
-  warning: "hover:border-warning/30",
-  info: "hover:border-info/30",
-  danger: "hover:border-danger/30",
-};
-
 const STROKE_COLORS: Record<NonNullable<StatCardProps["accent"]>, string> = {
   primary: "var(--primary)",
   success: "var(--success)",
@@ -56,36 +48,32 @@ export function StatCard({ label, value, icon: Icon, href, trend, sparkline, for
 
   const content = (
     <motion.div
-      whileHover={{ y: -3 }}
-      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+      whileHover={{ y: -2 }}
+      transition={{ type: "spring", stiffness: 380, damping: 32 }}
       className={cn(
-        "group relative isolate flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card p-4.5 shadow-sm transition-[box-shadow,border-color] duration-200 hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)]",
-        ACCENT_BORDER_HOVER[accent],
+        "group relative isolate flex h-full flex-col overflow-hidden rounded-2xl bg-card p-5 ring-1 ring-[var(--border)]",
+        "transition-shadow duration-300 ease-[var(--ease-swift)] hover:shadow-[var(--shadow-lift)]",
       )}
     >
-      {/* soft accent glow, top-right */}
+      {/* One light, low in the corner, warming on hover. The watermark icon
+          that used to sit behind the number is gone: it competed with the one
+          thing this card exists to show. */}
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-[0.12] blur-2xl transition-opacity duration-300 group-hover:opacity-[0.22]",
+          "pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full opacity-[0.10] blur-3xl transition-opacity duration-500 group-hover:opacity-[0.18]",
           ACCENT_GLOW_CLASSES[accent],
         )}
       />
-      {/* giant faint watermark icon */}
-      <Icon
-        aria-hidden
-        strokeWidth={1.5}
-        className="pointer-events-none absolute -bottom-4 -right-4 h-24 w-24 text-foreground opacity-[0.03] transition-transform duration-300 group-hover:scale-110 group-hover:opacity-[0.05]"
-      />
 
       <div className="relative z-10 flex items-start justify-between">
-        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl ring-1", ACCENT_ICON_CLASSES[accent])}>
-          <Icon className="h-4.5 w-4.5" strokeWidth={2.1} />
+        <div className={cn("flex h-9 w-9 items-center justify-center rounded-[11px] ring-1", ACCENT_ICON_CLASSES[accent])}>
+          <Icon className="h-4.5 w-4.5" strokeWidth={2} />
         </div>
         {trend !== undefined && (
           <span
             className={cn(
-              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums",
+              "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
               trend >= 0 ? "bg-success/10 text-success" : "bg-danger/10 text-danger",
             )}
           >
@@ -95,23 +83,23 @@ export function StatCard({ label, value, icon: Icon, href, trend, sparkline, for
         )}
       </div>
 
-      <div className="relative z-10 mt-3.5">
-        <p className="text-[26px] font-semibold leading-none tracking-tight text-foreground">{displayValue}</p>
-        <div className="mt-1.5 flex items-center gap-1 text-[13px] text-muted-foreground">
+      <div className="relative z-10 mt-5">
+        <p className="text-[30px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-foreground">{displayValue}</p>
+        <div className="mt-2 flex items-center gap-1 text-[13px] text-muted-foreground">
           <span className="truncate">{label}</span>
           {href && (
-            <ArrowRight className="h-3 w-3 shrink-0 -translate-x-0.5 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
+            <ArrowRight className="h-3 w-3 shrink-0 -translate-x-1 opacity-0 transition-all duration-300 ease-[var(--ease-swift)] group-hover:translate-x-0 group-hover:opacity-100" />
           )}
         </div>
       </div>
 
       {sparkline && sparkline.length > 1 && (
-        <div className="relative z-10 -mx-1 mt-2.5 h-9 flex-1">
+        <div className="relative z-10 -mx-1.5 mt-4 h-10 flex-1">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={sparkline.map((v, i) => ({ i, v }))} margin={{ top: 2, right: 1, bottom: 0, left: 1 }}>
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={STROKE_COLORS[accent]} stopOpacity={0.32} />
+                  <stop offset="0%" stopColor={STROKE_COLORS[accent]} stopOpacity={0.28} />
                   <stop offset="100%" stopColor={STROKE_COLORS[accent]} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -119,7 +107,7 @@ export function StatCard({ label, value, icon: Icon, href, trend, sparkline, for
                 type="monotone"
                 dataKey="v"
                 stroke={STROKE_COLORS[accent]}
-                strokeWidth={1.75}
+                strokeWidth={1.5}
                 fill={`url(#${gradientId})`}
                 dot={false}
                 activeDot={false}

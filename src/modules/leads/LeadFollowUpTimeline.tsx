@@ -34,7 +34,9 @@ export function LeadFollowUpTimeline({ leadId, leadStatus }: { leadId: string; l
   const followUps = data?.items ?? [];
   const completedCount = followUps.filter((f) => f.completed_at).length;
   const atLimit = followUps.length >= MAX_FOLLOW_UP_ATTEMPTS;
-  const canSchedule = leadStatus !== "lost" && !atLimit;
+  // Neither terminal stage takes new follow-ups: a lost lead is closed and a client
+  // is past qualifying — their conversations belong to the application.
+  const canSchedule = leadStatus !== "lost" && leadStatus !== "converted" && !atLimit;
 
   return (
     <div>

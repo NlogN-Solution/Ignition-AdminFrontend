@@ -14,13 +14,25 @@ interface ApplicationFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultStudentId?: string;
+  /**
+   * Opens with a university already chosen — how the research shortlist starts
+   * an application. Deliberately not a default *program*: the shortlist says
+   * which institution the student was looking at, never which course, and
+   * picking one for them would be inventing a decision they have not made.
+   */
+  defaultUniversityId?: string;
 }
 
-export function ApplicationFormDialog({ open, onOpenChange, defaultStudentId }: ApplicationFormDialogProps) {
+export function ApplicationFormDialog({
+  open,
+  onOpenChange,
+  defaultStudentId,
+  defaultUniversityId,
+}: ApplicationFormDialogProps) {
   const createApplication = useCreateApplication();
   const [studentId, setStudentId] = useState<string | undefined>(defaultStudentId);
   const [counsellorId, setCounsellorId] = useState<string | undefined>();
-  const [universityId, setUniversityId] = useState<string | undefined>();
+  const [universityId, setUniversityId] = useState<string | undefined>(defaultUniversityId);
   const [programId, setProgramId] = useState<string | undefined>();
   const [intakeId, setIntakeId] = useState<string | undefined>();
   const [tuitionFee, setTuitionFee] = useState("");
@@ -31,14 +43,14 @@ export function ApplicationFormDialog({ open, onOpenChange, defaultStudentId }: 
     if (open) {
       setStudentId(defaultStudentId);
       setCounsellorId(undefined);
-      setUniversityId(undefined);
+      setUniversityId(defaultUniversityId);
       setProgramId(undefined);
       setIntakeId(undefined);
       setTuitionFee("");
       setScholarship("");
       setRemarks("");
     }
-  }, [open, defaultStudentId]);
+  }, [open, defaultStudentId, defaultUniversityId]);
 
   const canSubmit = Boolean(studentId && programId);
 

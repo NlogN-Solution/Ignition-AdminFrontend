@@ -12,13 +12,13 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center", className)}>
-      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
-        <Icon className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
+    <div className={cn("flex flex-col items-center justify-center gap-3.5 rounded-2xl px-6 py-20 text-center", className)}>
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/[0.04] shadow-[var(--glass-sheen)] dark:bg-white/[0.06]">
+        <Icon className="h-5 w-5 text-muted-foreground" strokeWidth={1.6} />
       </div>
       <div className="space-y-1">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
+        <p className="text-[14px] font-medium tracking-[-0.012em] text-foreground">{title}</p>
+        {description && <p className="max-w-sm text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
       </div>
       {action}
     </div>

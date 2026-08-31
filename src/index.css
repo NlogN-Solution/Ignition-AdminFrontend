@@ -6,9 +6,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Vitrine — panels of glass on a lit canvas.
+
+   The console is a workspace, not a website: the chrome recedes into
+   translucency and the work floats above it on quiet, near-opaque sheets.
+   Two rules keep that honest:
+
+   1. Translucency belongs to chrome. The sidebar, the top bar, menus, sheets
+      and dialogs are glass, because they sit *over* your work and should let
+      it show through. Content surfaces are 80–92% opaque — a table of names
+      and money has to stay legible, and heavy blur behind dense text is both
+      unreadable and expensive to composite.
+   2. Depth comes from light, not lines. Elevation is a soft two-stage shadow
+      plus a hairline; nothing here is separated by a hard 1px box.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', ui-sans-serif, sans-serif;
+    --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, ui-sans-serif, sans-serif;
     --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -50,122 +66,250 @@
     --color-danger-foreground: var(--danger-foreground);
     --color-info: var(--info);
     --color-info-foreground: var(--info-foreground);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
+
+    /* Continuous-looking corners: generous, and consistent across the scale. */
+    --radius-sm: calc(var(--radius) * 0.5);
+    --radius-md: calc(var(--radius) * 0.72);
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-xl: calc(var(--radius) * 1.35);
+    --radius-2xl: calc(var(--radius) * 1.7);
+    --radius-3xl: calc(var(--radius) * 2.1);
     --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* One easing for everything that moves. Apple's own: a fast departure and
+       a long, soft arrival — motion you notice only when it is missing. */
+    --ease-swift: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 :root {
-    --background: #FAFBFC;
-    --foreground: #111827;
-    --card: #FFFFFF;
-    --card-foreground: #111827;
-    --popover: #FFFFFF;
-    --popover-foreground: #111827;
-    --primary: #2563EB;
-    --primary-foreground: #FFFFFF;
-    --secondary: #F3F4F6;
-    --secondary-foreground: #111827;
-    --muted: #F3F4F6;
-    --muted-foreground: #6B7280;
-    --accent: #EFF6FF;
-    --accent-foreground: #1D4ED8;
-    --destructive: #EF4444;
-    --destructive-foreground: #FFFFFF;
-    --border: #E5E7EB;
-    --input: #E5E7EB;
-    --ring: #2563EB;
+    /* Canvas: cool light grey, deep enough that a white sheet lifts off it. */
+    --background: #F0F1F4;
+    --foreground: #1D1D1F;
 
-    --success: #10B981;
+    /* Content sheets — mostly opaque, faintly translucent. */
+    --card: rgba(255, 255, 255, 0.82);
+    --card-foreground: #1D1D1F;
+
+    /* Chrome that floats over the work — properly glassy. */
+    --popover: rgba(252, 252, 253, 0.78);
+    --popover-foreground: #1D1D1F;
+
+    --primary: #0071E3;
+    --primary-foreground: #FFFFFF;
+    --secondary: rgba(120, 120, 128, 0.10);
+    --secondary-foreground: #1D1D1F;
+    --muted: rgba(120, 120, 128, 0.10);
+    --muted-foreground: #6E6E73;
+    --accent: rgba(0, 113, 227, 0.10);
+    --accent-foreground: #0060C0;
+    --destructive: #D70015;
+    --destructive-foreground: #FFFFFF;
+
+    /* Hairlines, not borders. */
+    --border: rgba(0, 0, 0, 0.075);
+    --input: rgba(0, 0, 0, 0.13);
+    --ring: rgba(0, 113, 227, 0.55);
+
+    /* Apple's system colours, darkened where they carry text on light. */
+    --success: #248A3D;
     --success-foreground: #FFFFFF;
-    --warning: #F59E0B;
-    --warning-foreground: #111827;
-    --danger: #EF4444;
+    --warning: #B25000;
+    --warning-foreground: #FFFFFF;
+    --danger: #D70015;
     --danger-foreground: #FFFFFF;
-    --info: #3B82F6;
+    --info: #0071E3;
     --info-foreground: #FFFFFF;
 
-    --chart-1: #2563EB;
-    --chart-2: #10B981;
-    --chart-3: #F59E0B;
-    --chart-4: #8B5CF6;
-    --chart-5: #EF4444;
+    --chart-1: #0071E3;
+    --chart-2: #34C759;
+    --chart-3: #FF9500;
+    --chart-4: #5856D6;
+    --chart-5: #FF2D55;
 
-    --radius: 0.625rem;
+    --radius: 0.875rem;
 
-    --sidebar: #FFFFFF;
-    --sidebar-foreground: #111827;
-    --sidebar-primary: #2563EB;
+    --sidebar: rgba(255, 255, 255, 0.62);
+    --sidebar-foreground: #1D1D1F;
+    --sidebar-primary: #0071E3;
     --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: #EFF6FF;
-    --sidebar-accent-foreground: #1D4ED8;
-    --sidebar-border: #E5E7EB;
-    --sidebar-ring: #2563EB;
+    --sidebar-accent: #FFFFFF;
+    --sidebar-accent-foreground: #1D1D1F;
+    --sidebar-border: rgba(0, 0, 0, 0.06);
+    --sidebar-ring: rgba(0, 113, 227, 0.55);
+
+    /* Depth: a contact shadow plus a long soft cast. Never a hard edge. */
+    --shadow-1: 0 1px 1px rgba(16, 24, 40, 0.03), 0 1px 3px -1px rgba(16, 24, 40, 0.05);
+    --shadow-2: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 24px -12px rgba(16, 24, 40, 0.16);
+    --shadow-3: 0 2px 4px rgba(16, 24, 40, 0.04), 0 24px 48px -20px rgba(16, 24, 40, 0.24);
+    --shadow-lift: 0 2px 4px rgba(16, 24, 40, 0.05), 0 16px 32px -14px rgba(16, 24, 40, 0.22);
+
+    /* Inner top highlight — the edge where light catches glass. */
+    --glass-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --glass-chrome: saturate(180%) blur(28px);
+    --glass-sheet: saturate(150%) blur(12px);
+
+    /* The ambient field behind everything. Three lights, barely there. */
+    --amb-1: rgba(0, 113, 227, 0.24);
+    --amb-2: rgba(88, 86, 214, 0.19);
+    --amb-3: rgba(255, 149, 0, 0.13);
 }
 
 .dark {
-    --background: #0B0D12;
-    --foreground: #F3F4F6;
-    --card: #14161C;
-    --card-foreground: #F3F4F6;
-    --popover: #14161C;
-    --popover-foreground: #F3F4F6;
-    --primary: #3B82F6;
-    --primary-foreground: #0B0D12;
-    --secondary: #1C1F27;
-    --secondary-foreground: #F3F4F6;
-    --muted: #1C1F27;
-    --muted-foreground: #9CA3AF;
-    --accent: #182338;
-    --accent-foreground: #60A5FA;
-    --destructive: #F87171;
-    --destructive-foreground: #0B0D12;
-    --border: rgba(255, 255, 255, 0.08);
-    --input: rgba(255, 255, 255, 0.12);
-    --ring: #3B82F6;
+    --background: #08080A;
+    --foreground: #F5F5F7;
 
-    --success: #34D399;
-    --success-foreground: #0B0D12;
-    --warning: #FBBF24;
-    --warning-foreground: #0B0D12;
-    --danger: #F87171;
-    --danger-foreground: #0B0D12;
-    --info: #60A5FA;
-    --info-foreground: #0B0D12;
+    --card: rgba(30, 30, 34, 0.72);
+    --card-foreground: #F5F5F7;
+    --popover: rgba(34, 34, 39, 0.78);
+    --popover-foreground: #F5F5F7;
 
-    --chart-1: #60A5FA;
-    --chart-2: #34D399;
-    --chart-3: #FBBF24;
-    --chart-4: #A78BFA;
-    --chart-5: #F87171;
+    --primary: #0A84FF;
+    --primary-foreground: #FFFFFF;
+    --secondary: rgba(120, 120, 128, 0.20);
+    --secondary-foreground: #F5F5F7;
+    --muted: rgba(120, 120, 128, 0.18);
+    --muted-foreground: #98989F;
+    --accent: rgba(10, 132, 255, 0.18);
+    --accent-foreground: #6FB6FF;
+    --destructive: #FF453A;
+    --destructive-foreground: #FFFFFF;
 
-    --sidebar: #101217;
-    --sidebar-foreground: #F3F4F6;
-    --sidebar-primary: #3B82F6;
-    --sidebar-primary-foreground: #0B0D12;
-    --sidebar-accent: #182338;
-    --sidebar-accent-foreground: #60A5FA;
+    --border: rgba(255, 255, 255, 0.09);
+    --input: rgba(255, 255, 255, 0.14);
+    --ring: rgba(10, 132, 255, 0.6);
+
+    --success: #30D158;
+    --success-foreground: #08080A;
+    --warning: #FF9F0A;
+    --warning-foreground: #08080A;
+    --danger: #FF453A;
+    --danger-foreground: #FFFFFF;
+    --info: #0A84FF;
+    --info-foreground: #FFFFFF;
+
+    --chart-1: #0A84FF;
+    --chart-2: #30D158;
+    --chart-3: #FF9F0A;
+    --chart-4: #5E5CE6;
+    --chart-5: #FF375F;
+
+    --sidebar: rgba(28, 28, 32, 0.55);
+    --sidebar-foreground: #F5F5F7;
+    --sidebar-primary: #0A84FF;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: rgba(255, 255, 255, 0.10);
+    --sidebar-accent-foreground: #F5F5F7;
     --sidebar-border: rgba(255, 255, 255, 0.08);
-    --sidebar-ring: #3B82F6;
+    --sidebar-ring: rgba(10, 132, 255, 0.6);
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 24px -12px rgba(0, 0, 0, 0.7);
+    --shadow-3: 0 2px 4px rgba(0, 0, 0, 0.4), 0 24px 48px -20px rgba(0, 0, 0, 0.8);
+    --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.4), 0 16px 32px -14px rgba(0, 0, 0, 0.75);
+
+    --glass-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    --amb-1: rgba(10, 132, 255, 0.30);
+    --amb-2: rgba(94, 92, 230, 0.24);
+    --amb-3: rgba(255, 159, 10, 0.13);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "cv11", "ss01";
-  }
+
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  body {
+    @apply bg-background text-foreground;
+    /* Geist sits a touch loose at UI sizes; SF's optical tightness is most of
+       what makes Apple's interfaces read as composed rather than typed. */
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.011em;
+  }
+
+  /* The ambient field. Fixed behind everything, so panels drift over light
+     rather than over flat paint — this is what makes the glass read as glass. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -25%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(42rem 34rem at 12% 8%, var(--amb-1), transparent 62%),
+      radial-gradient(38rem 30rem at 88% 4%, var(--amb-2), transparent 60%),
+      radial-gradient(46rem 38rem at 74% 92%, var(--amb-3), transparent 64%);
+    filter: blur(24px);
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.021em;
+  }
+
   ::selection {
-    background: color-mix(in oklab, var(--primary) 25%, transparent);
+    background: color-mix(in oklab, var(--primary) 22%, transparent);
+  }
+
+  /* Thin, self-effacing scrollbars — visible only against their own track. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent) transparent;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--foreground) 16%, transparent);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--foreground) 28%, transparent);
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* Every surface in the app already carries `bg-card` / `bg-popover` /
+     `bg-sidebar`, so depth and translucency are granted here once rather than
+     retrofitted onto a few hundred call sites. Colour still comes from the
+     utility (it wins on background-color); this only adds what no utility set.
+     Anything that wants its own elevation can still pass `shadow-*`. */
+  .bg-card {
+    backdrop-filter: var(--glass-sheet);
+    -webkit-backdrop-filter: var(--glass-sheet);
+    box-shadow: var(--shadow-1);
+  }
+
+  .bg-popover,
+  .bg-sidebar {
+    backdrop-filter: var(--glass-chrome);
+    -webkit-backdrop-filter: var(--glass-chrome);
+  }
+
+  /* Chrome that floats over the work: menus, dialogs, sheets, the sidebar. */
+  .glass-chrome {
+    background: var(--popover);
+    backdrop-filter: var(--glass-chrome);
+    -webkit-backdrop-filter: var(--glass-chrome);
+    box-shadow: var(--shadow-3), var(--glass-sheen);
+  }
+
+  /* The lit lozenge: how a selected thing looks when nothing is painted in. */
+  .glass-lozenge {
+    background: var(--sidebar-accent);
+    box-shadow: var(--shadow-2), var(--glass-sheen);
+    /* White on a white panel is only legible if its edge is: this ring is the
+       difference between a selected row and a rendering artefact. */
+    outline: 1px solid color-mix(in srgb, var(--foreground) 7%, transparent);
+    outline-offset: -1px;
   }
 }
 
@@ -179,4 +323,31 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+  /* The eyebrow: 10.5px, wide-tracked, used for group labels and nothing else. */
+  .label-micro {
+    font-size: 10.5px;
+    font-weight: 590;
+    letter-spacing: 0.085em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .text-display {
+    font-size: 1.625rem;
+    line-height: 1.16;
+    font-weight: 600;
+    letter-spacing: -0.026em;
+  }
+}
+
+/* Restraint is a setting, not just a preference. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  body::before { filter: none; }
 }

@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import { Loader2 } from "lucide-react";
+import { FilePlus2, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,13 +16,15 @@ export function ConvertLeadDialog({
   leadName,
   open,
   onOpenChange,
+  onStartApplication,
 }: {
   leadId: string;
   leadName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Offered on the success screen — the next thing anyone does after converting. */
+  onStartApplication?: () => void;
 }) {
-  const navigate = useNavigate();
   const convertLead = useConvertLead(leadId);
   const [source, setSource] = useState<string>(ConversionSource.AGREEMENT_SIGNED);
   const [remarks, setRemarks] = useState("");
@@ -32,9 +33,9 @@ export function ConvertLeadDialog({
 
   function handleOpenChange(next: boolean) {
     if (!next) {
-      // Closing after a successful conversion (with or without a shown credential) still
-      // means the lead is gone — send the user to the new applicant record either way.
-      if (result?.student_user_id) navigate(`/applicants/${result.student_user_id}`);
+      // Converting used to redirect to the applicant page, which is what split one
+      // person's file across two sections. The lead page behind this dialog is already
+      // re-rendering in client mode, so closing just returns to it.
       setResult(null);
       setSource(ConversionSource.AGREEMENT_SIGNED);
       setRemarks("");
@@ -58,12 +59,19 @@ export function ConvertLeadDialog({
             <GeneratedPasswordReveal password={result.generated_password} name={leadName} />
           ) : (
             <p className="text-[13px] text-muted-foreground">
-              You can enable portal access for them any time from their applicant page.
+              You can enable portal access for them any time from this page.
             </p>
           )}
 
           <DialogFooter>
-            <Button onClick={() => handleOpenChange(false)}>Done</Button>
+            <Button variant="outline" onClick={() => handleOpenChange(false)}>
+              Done
+            </Button>
+            {onStartApplication && result.student_user_id && (
+              <Button onClick={onStartApplication}>
+                <FilePlus2 className="h-3.5 w-3.5" /> Start application
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -76,8 +84,7 @@ export function ConvertLeadDialog({
         <DialogHeader>
           <DialogTitle>Convert to client</DialogTitle>
           <DialogDescription>
-            This creates a Student record and moves the applicant into the Student module — the lead will no longer appear in Lead
-            Management.
+            This creates their student record so applications can be started. They stay on this page as a Client.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -110,7 +117,7 @@ export function ConvertLeadDialog({
             <p className="text-xs text-muted-foreground">
               {createPortal === "yes"
                 ? "You'll get a one-time password to share with them."
-                : "You can enable portal access later from their applicant page."}
+                : "You can enable portal access later from this page."}
             </p>
           </div>
           <div className="space-y-1.5">

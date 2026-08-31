@@ -42,12 +42,12 @@ export function ListToolbar({
 }: ListToolbarProps) {
   if (selectedCount && selectedCount > 0) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2">
+      <div className="flex items-center justify-between gap-3 rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-[var(--border)]">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClearSelection}>
             <X className="h-3.5 w-3.5" />
           </Button>
-          <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
+          <span className="text-[13px] font-medium tracking-[-0.01em] text-foreground">{selectedCount} selected</span>
         </div>
         <div className="flex items-center gap-2">{bulkActions}</div>
       </div>

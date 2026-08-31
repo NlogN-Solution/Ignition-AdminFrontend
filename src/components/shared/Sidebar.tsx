@@ -18,18 +18,21 @@ function SidebarLink({ path, label, icon: Icon, collapsed }: { path: string; lab
     <NavLink
       to={path}
       className={cn(
-        "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors",
-        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+        "group relative flex items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] transition-colors duration-200",
+        isActive ? "font-medium text-foreground" : "font-normal text-muted-foreground hover:text-foreground",
       )}
     >
       {isActive && (
         <motion.div
           layoutId="sidebar-active-pill"
-          className="absolute inset-0 rounded-lg bg-accent"
-          transition={{ type: "spring", stiffness: 500, damping: 40 }}
+          className="glass-lozenge absolute inset-0 rounded-[10px]"
+          transition={{ type: "spring", stiffness: 420, damping: 38 }}
         />
       )}
-      <Icon className="relative z-10 h-[15px] w-[15px] shrink-0" strokeWidth={2} />
+      <Icon
+        className={cn("relative z-10 h-[15px] w-[15px] shrink-0 transition-colors", isActive && "text-primary")}
+        strokeWidth={isActive ? 2.1 : 1.9}
+      />
       {!collapsed && <span className="relative z-10 truncate">{label}</span>}
       {!collapsed && (
         <button
@@ -40,7 +43,7 @@ function SidebarLink({ path, label, icon: Icon, collapsed }: { path: string; lab
             togglePinned(path);
           }}
           className={cn(
-            "relative z-10 ml-auto shrink-0 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10",
+            "relative z-10 ml-auto shrink-0 rounded-md p-0.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10",
             isPinned && "opacity-100",
           )}
         >
@@ -71,21 +74,22 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex h-svh shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200",
-        collapsed ? "w-[68px]" : "w-[232px]",
+        "flex h-full shrink-0 flex-col overflow-hidden rounded-[calc(var(--radius)*1.7)] bg-sidebar shadow-[var(--shadow-2)] ring-1 ring-inset ring-[var(--sidebar-border)]",
+        "transition-[width] duration-300 ease-[var(--ease-swift)]",
+        collapsed ? "w-[72px]" : "w-[236px]",
       )}
     >
-      <div className={cn("flex h-14 items-center gap-2 px-4", collapsed && "justify-center px-0")}>
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Zap className="h-3.5 w-3.5" strokeWidth={2.5} />
+      <div className={cn("flex h-16 items-center gap-2.5 px-4", collapsed && "justify-center px-0")}>
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] bg-primary text-primary-foreground shadow-[var(--shadow-1),var(--glass-sheen)]">
+          <Zap className="h-3.5 w-3.5" strokeWidth={2.4} />
         </div>
-        {!collapsed && <span className="truncate text-[13px] font-semibold tracking-tight">Ignition</span>}
+        {!collapsed && <span className="truncate text-[14px] font-semibold tracking-[-0.02em]">Ignition</span>}
       </div>
 
-      <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-2 scrollbar-none">
+      <nav className="flex-1 space-y-6 overflow-y-auto px-2.5 pt-3 pb-4 scrollbar-none">
         {pinnedItems.length > 0 && (
           <div>
-            {!collapsed && <p className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/70">Pinned</p>}
+            {!collapsed && <p className="label-micro px-2.5 pb-2 text-muted-foreground/60">Pinned</p>}
             <div className="space-y-0.5">
               {pinnedItems.map((item) => (
                 <SidebarLink key={item.path} {...item} collapsed={collapsed} />
@@ -101,7 +105,7 @@ export function Sidebar() {
           if (items.length === 0) return null;
           return (
             <div key={group.label}>
-              {!collapsed && <p className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/70">{group.label}</p>}
+              {!collapsed && <p className="label-micro px-2.5 pb-2 text-muted-foreground/60">{group.label}</p>}
               <div className="space-y-0.5">
                 {items.map((item) => (
                   <SidebarLink key={item.path} {...item} collapsed={collapsed} />
@@ -112,11 +116,13 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border p-2.5">
+      {/* The nav scrolls under this, so it needs its own ground to sit on. */}
+      <div className="border-t border-[var(--sidebar-border)] p-2 pt-2">
         <button
           type="button"
           onClick={toggleSidebar}
-          className="flex w-full items-center justify-center gap-2 rounded-lg py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex w-full items-center justify-center gap-2 rounded-[10px] py-2 text-muted-foreground transition-colors duration-200 hover:bg-black/[0.04] hover:text-foreground dark:hover:bg-white/[0.06]"
         >
           {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
         </button>

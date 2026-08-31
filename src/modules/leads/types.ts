@@ -150,15 +150,57 @@ export interface DueFollowUpItem {
 export const MAX_FOLLOW_UP_ATTEMPTS = 7;
 
 // --- Lifecycle grouping --------------------------------------------------
-// The backend keeps the original 6-value LeadStatus enum; the "Raw Lead / Prospect /
-// Client / Lost" lifecycle from the brief is a UI-level grouping on top of it —
-// converting still flips status to "converted", it just then always gets excluded
-// from the default Lead Management views (see LeadListParams.exclude_status).
+// The backend keeps the original 6-value LeadStatus enum; the "Raw lead / Prospect /
+// Client / Lost" lifecycle from the brief is a UI-level grouping on top of it. One
+// person is worked from raw lead to client on the Leads page itself — converting no
+// longer hands them off to another section, it just moves them to the Clients tab.
 
 export const RAW_LEAD_STATUSES: LeadStatus[] = ["new", "contacted", "follow_up"] as LeadStatus[];
 export const PROSPECT_STATUSES: LeadStatus[] = ["qualified"] as LeadStatus[];
+export const CLIENT_STATUSES: LeadStatus[] = ["converted"] as LeadStatus[];
 export const LOST_STATUSES: LeadStatus[] = ["lost"] as LeadStatus[];
 
-export type LeadLifecycleTab = "raw" | "prospect" | "lost";
+export type LeadLifecycleTab = "raw" | "prospect" | "client" | "lost";
+
+/** The four stages a lead moves through, as staff talk about them. */
+export type LeadStage = "raw" | "prospect" | "client" | "lost";
+
+export function stageOf(status: LeadStatus): LeadStage {
+  if (status === "lost") return "lost";
+  if (status === "converted") return "client";
+  if (status === "qualified") return "prospect";
+  return "raw";
+}
+
+export const STAGE_LABELS: Record<LeadStage, string> = {
+  raw: "Raw lead",
+  prospect: "Prospect",
+  client: "Client",
+  lost: "Lost",
+};
+
+/**
+ * What each raw status is called in the UI. The backend enum is unchanged — this is
+ * the only place the two vocabularies meet, so "Qualified" reads as "Prospect" and
+ * "Converted" reads as "Client" everywhere without a migration.
+ */
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  new: "New",
+  contacted: "Contacted",
+  follow_up: "Follow-up",
+  qualified: "Prospect",
+  converted: "Client",
+  lost: "Lost",
+} as Record<LeadStatus, string>;
 
 export const LEAD_STATUS_PIPELINE: LeadStatus[] = ["new", "contacted", "follow_up", "qualified", "converted"] as LeadStatus[];
+
+/** Pipeline board columns: four stages, not six statuses. */
+export const STAGE_PIPELINE: LeadStage[] = ["raw", "prospect", "client", "lost"];
+
+export const STATUSES_BY_STAGE: Record<LeadStage, LeadStatus[]> = {
+  raw: RAW_LEAD_STATUSES,
+  prospect: PROSPECT_STATUSES,
+  client: CLIENT_STATUSES,
+  lost: LOST_STATUSES,
+};

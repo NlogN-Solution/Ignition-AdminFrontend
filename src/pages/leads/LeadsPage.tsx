@@ -4,12 +4,11 @@ import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Bookmark, Download, LayoutGrid, List, Plus, Trash2, UserCog, UserPlus, X } from "lucide-react";
+import { Bookmark, Download, FilePlus2, LayoutGrid, List, Plus, Trash2, UserCog, UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ListToolbar } from "@/components/shared/ListToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserPicker } from "@/components/shared/UserPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +29,9 @@ import { leadService } from "@/modules/leads/service";
 import { LeadFormDialog } from "@/modules/leads/LeadFormDialog";
 import { LeadPipelineBoard } from "@/modules/leads/LeadPipelineBoard";
 import { PriorityBadge } from "@/modules/leads/PriorityBadge";
+import { LeadStageBadge } from "@/modules/leads/LeadStageBadge";
 import { useSavedLeadFilters } from "@/modules/leads/useSavedLeadFilters";
+import { StaffNameCell } from "@/modules/users/StaffNameCell";
 import type { LeadLifecycleTab, LeadRead } from "@/modules/leads/types";
 import { LeadPriority, LeadSource, LostReason } from "@/types/enums";
 import { toTitleCase, formatDate } from "@/utils/format";
@@ -39,20 +40,29 @@ import { queryKeys } from "@/constants/queryKeys";
 import { cn } from "@/lib/utils";
 
 const TAB_LABELS: Record<LeadLifecycleTab, string> = {
-  raw: "Raw Leads",
+  raw: "Raw leads",
   prospect: "Prospects",
+  client: "Clients",
   lost: "Lost",
 };
+
+const TAB_STATUS: Record<LeadLifecycleTab, string | undefined> = {
+  raw: undefined,
+  prospect: "qualified",
+  client: "converted",
+  lost: "lost",
+};
+
+function tabFromParam(value: string | null): LeadLifecycleTab {
+  return value === "prospect" || value === "client" || value === "lost" ? value : "raw";
+}
 
 export function LeadsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const initialTab = searchParams.get("tab");
-  const [tab, setTab] = useState<LeadLifecycleTab>(
-    initialTab === "prospect" || initialTab === "lost" ? initialTab : "raw",
-  );
+  const [tab, setTab] = useState<LeadLifecycleTab>(() => tabFromParam(searchParams.get("tab")));
   const [view, setView] = useState<"table" | "board">("table");
   const [search, setSearch] = useState("");
   const [priority, setPriority] = useState<string>(searchParams.get("priority") ?? "all");
@@ -74,7 +84,7 @@ export function LeadsPage() {
       limit: 20,
       search: debouncedSearch || undefined,
       statuses: tab === "raw" ? "new,contacted,follow_up" : undefined,
-      status: tab === "prospect" ? ("qualified" as const) : tab === "lost" ? ("lost" as const) : undefined,
+      status: TAB_STATUS[tab] as LeadRead["status"] | undefined,
       priority: priority === "all" ? undefined : (priority as LeadPriority),
       source: source === "all" ? undefined : (source as LeadSource),
     }),
@@ -145,52 +155,129 @@ export function LeadsPage() {
     const filter = savedFilters.find((f) => f.id === id);
     if (!filter) return;
     if (filter.status === "qualified") setTab("prospect");
+    else if (filter.status === "converted") setTab("client");
     else if (filter.status === "lost") setTab("lost");
     else setTab("raw");
     setPriority(filter.priority ?? "all");
     setSource(filter.source ?? "all");
   }
 
-  const columns = useMemo<ColumnDef<LeadRead, any>[]>(
-    () => [
+  // Columns follow the stage: priority and source are how you triage a raw lead and
+  // noise once someone is a client, where what matters is when they converted and who
+  // owns them. One memo per tab rather than one table trying to serve all four.
+  const columns = useMemo<ColumnDef<LeadRead, any>[]>(() => {
+    const name: ColumnDef<LeadRead, any> = {
+      accessorKey: "first_name",
+      header: "Name",
+      cell: ({ row }) => (
+        <div>
+          <p className="font-medium text-foreground">
+            {row.original.first_name} {row.original.last_name ?? ""}
+          </p>
+          <p className="text-xs text-muted-foreground">{row.original.phone}</p>
+        </div>
+      ),
+    };
+    const priorityCol: ColumnDef<LeadRead, any> = {
+      accessorKey: "priority",
+      header: "Priority",
+      cell: ({ getValue }) => <PriorityBadge priority={getValue()} />,
+    };
+    const sourceCol: ColumnDef<LeadRead, any> = {
+      accessorKey: "source",
+      header: "Source",
+      cell: ({ getValue }) => <span className="text-muted-foreground">{toTitleCase(getValue<string>())}</span>,
+    };
+    const destination: ColumnDef<LeadRead, any> = {
+      accessorKey: "interested_country",
+      header: "Destination",
+      cell: ({ getValue }) => getValue<string>() || "—",
+    };
+    const date = (key: keyof LeadRead, header: string): ColumnDef<LeadRead, any> => ({
+      accessorKey: key,
+      header,
+      cell: ({ getValue }) => (
+        <span className="text-muted-foreground">{getValue<string>() ? formatDate(getValue<string>()) : "—"}</span>
+      ),
+    });
+
+    if (tab === "prospect") {
+      return [name, priorityCol, sourceCol, destination, date("qualified_at", "Qualified")];
+    }
+
+    if (tab === "client") {
+      return [
+        name,
+        destination,
+        date("converted_at", "Converted"),
+        {
+          accessorKey: "conversion_source",
+          header: "How",
+          cell: ({ getValue }) => (
+            <span className="text-muted-foreground">{getValue<string>() ? toTitleCase(getValue<string>()) : "—"}</span>
+          ),
+        },
+        {
+          accessorKey: "assigned_to",
+          header: "Owner",
+          cell: ({ getValue }) => <StaffNameCell userId={getValue<string | null>()} />,
+        },
+        {
+          id: "actions",
+          header: "",
+          cell: ({ row }) => (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={!row.original.converted_user_id}
+              title={row.original.converted_user_id ? undefined : "This client has no student account yet"}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/leads/${row.original.id}?startApplication=1`);
+              }}
+            >
+              <FilePlus2 className="h-3.5 w-3.5" /> Start application
+            </Button>
+          ),
+        },
+      ];
+    }
+
+    if (tab === "lost") {
+      return [
+        name,
+        sourceCol,
+        {
+          accessorKey: "lost_reason",
+          header: "Reason",
+          cell: ({ getValue }) => (
+            <span className="text-muted-foreground">{getValue<string>() ? toTitleCase(getValue<string>()) : "—"}</span>
+          ),
+        },
+        date("lost_at", "Lost"),
+      ];
+    }
+
+    return [
+      name,
+      priorityCol,
       {
-        accessorKey: "first_name",
-        header: "Name",
-        cell: ({ row }) => (
-          <div>
-            <p className="font-medium text-foreground">
-              {row.original.first_name} {row.original.last_name ?? ""}
-            </p>
-            <p className="text-xs text-muted-foreground">{row.original.phone}</p>
-          </div>
-        ),
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ getValue }) => <LeadStageBadge status={getValue()} />,
       },
-      { accessorKey: "priority", header: "Priority", cell: ({ getValue }) => <PriorityBadge priority={getValue()} /> },
-      { accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusBadge status={getValue<string>()} /> },
-      {
-        accessorKey: "source",
-        header: "Source",
-        cell: ({ getValue }) => <span className="text-muted-foreground">{toTitleCase(getValue<string>())}</span>,
-      },
-      {
-        accessorKey: "interested_country",
-        header: "Destination",
-        cell: ({ getValue }) => getValue<string>() || "—",
-      },
-      {
-        accessorKey: "created_at",
-        header: "Created",
-        cell: ({ getValue }) => <span className="text-muted-foreground">{formatDate(getValue<string>())}</span>,
-      },
-    ],
-    [],
-  );
+      sourceCol,
+      destination,
+      date("next_follow_up_at", "Next follow-up"),
+    ];
+  }, [tab, navigate]);
 
   return (
     <div>
       <PageHeader
         title="Leads"
-        description="Acquire and qualify prospects — once converted, they move to the Student module."
+        description="Every stage in one place — raw lead, prospect, client, lost."
         actions={
           <>
             <div className="flex items-center rounded-lg border border-border p-0.5">
@@ -217,6 +304,7 @@ export function LeadsPage() {
         }
       />
 
+      {view === "table" && (
       <Tabs value={tab} onValueChange={(v) => { setTab(v as LeadLifecycleTab); setPage(1); clearSelection(); }} className="mb-3">
         <TabsList>
           {(Object.keys(TAB_LABELS) as LeadLifecycleTab[]).map((t) => (
@@ -226,6 +314,7 @@ export function LeadsPage() {
           ))}
         </TabsList>
       </Tabs>
+      )}
 
       {view === "table" && (
         <div className="mb-3 space-y-2">
@@ -236,22 +325,30 @@ export function LeadsPage() {
             selectedCount={selectedIds.length}
             onClearSelection={clearSelection}
             bulkActions={
+              /* A client is a person with an application in flight; marking them lost or
+                 re-prioritising them in bulk is not a thing anyone does. */
               <>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("assign")}>
-                  <UserCog className="h-3.5 w-3.5" /> Assign
-                </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("priority")}>
-                  Priority
-                </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("lost")}>
-                  Mark lost
-                </Button>
+                {(tab === "raw" || tab === "prospect") && (
+                  <>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("assign")}>
+                      <UserCog className="h-3.5 w-3.5" /> Assign
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("priority")}>
+                      Priority
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("lost")}>
+                      Mark lost
+                    </Button>
+                  </>
+                )}
                 <Button variant="outline" size="sm" className="h-7 text-xs" onClick={bulkExport}>
                   <Download className="h-3.5 w-3.5" /> Export
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs text-danger hover:text-danger" onClick={bulkDelete}>
-                  <Trash2 className="h-3.5 w-3.5" /> Delete
-                </Button>
+                {tab !== "client" && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs text-danger hover:text-danger" onClick={bulkDelete}>
+                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                  </Button>
+                )}
               </>
             }
             filters={
@@ -350,7 +447,11 @@ export function LeadsPage() {
             <EmptyState
               icon={UserPlus}
               title={`No ${TAB_LABELS[tab].toLowerCase()}`}
-              description="Leads you capture from your website, walk-ins, or campaigns will show up here."
+              description={
+                tab === "client"
+                  ? "Convert a prospect and they appear here — with their applications alongside them."
+                  : "Leads you capture from your website, walk-ins, or campaigns will show up here."
+              }
               action={
                 <Button size="sm" onClick={() => setDialogOpen(true)}>
                   <Plus className="h-3.5 w-3.5" /> Add lead
@@ -361,7 +462,11 @@ export function LeadsPage() {
           }
         />
       ) : (
-        <LeadPipelineBoard search={debouncedSearch} />
+        <LeadPipelineBoard
+          search={debouncedSearch}
+          priority={priority === "all" ? undefined : (priority as LeadPriority)}
+          source={source === "all" ? undefined : (source as LeadSource)}
+        />
       )}
 
       <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
@@ -401,7 +506,7 @@ export function LeadsPage() {
         open={saveFilterOpen}
         onOpenChange={setSaveFilterOpen}
         onSave={(name) => {
-          saveFilter({ name, status: tab === "prospect" ? "qualified" : tab === "lost" ? "lost" : undefined, priority: priority === "all" ? undefined : priority, source: source === "all" ? undefined : source });
+          saveFilter({ name, status: TAB_STATUS[tab], priority: priority === "all" ? undefined : priority, source: source === "all" ? undefined : source });
           setSaveFilterOpen(false);
         }}
       />

@@ -106,10 +106,10 @@ export function DataTable<T>({
   const totalPages = total !== undefined ? Math.max(1, Math.ceil(total / limit)) : undefined;
 
   return (
-    <div className="rounded-xl border border-border bg-card">
-      <div className="max-h-[calc(100svh-260px)] overflow-auto rounded-t-xl">
+    <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-[var(--border)]">
+      <div className="max-h-[calc(100svh-280px)] overflow-auto">
         <Table style={{ width: table.getTotalSize() }}>
-          <TableHeader className="sticky top-0 z-10 bg-card">
+          <TableHeader className="sticky top-0 z-10 bg-[color-mix(in_srgb,var(--card)_92%,transparent)] backdrop-blur-[12px]">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => {
@@ -119,7 +119,7 @@ export function DataTable<T>({
                     <TableHead
                       key={header.id}
                       style={{ width: header.getSize() }}
-                      className="relative select-none whitespace-nowrap bg-card text-[12px] font-medium text-muted-foreground"
+                      className="relative select-none whitespace-nowrap bg-transparent text-[11.5px] font-medium tracking-[0.005em] text-muted-foreground"
                     >
                       {header.isPlaceholder ? null : (
                         <button

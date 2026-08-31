@@ -2,41 +2,71 @@ import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import { Mail, Phone } from "lucide-react";
 import { useLeads } from "./hooks";
-import { LEAD_STATUS_PIPELINE } from "./types";
-import { toTitleCase } from "@/utils/format";
-import { toneForStatus } from "@/utils/statusTone";
+import { STAGE_LABELS, STAGE_PIPELINE, STATUSES_BY_STAGE, type LeadStage } from "./types";
+import type { LeadPriority, LeadSource } from "@/types/enums";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const COLUMN_DOT: Record<string, string> = {
-  neutral: "bg-muted-foreground",
-  info: "bg-info",
-  success: "bg-success",
-  warning: "bg-warning",
-  danger: "bg-danger",
+const COLUMN_DOT: Record<LeadStage, string> = {
+  raw: "bg-muted-foreground",
+  prospect: "bg-info",
+  client: "bg-success",
+  lost: "bg-danger",
 };
 
-export function LeadPipelineBoard({ search }: { search: string }) {
+interface BoardFilters {
+  search: string;
+  priority?: LeadPriority;
+  source?: LeadSource;
+}
+
+/**
+ * Four columns — the stages staff talk about — not the six raw statuses. The three
+ * raw statuses collapse into one column because "new vs contacted" is a detail of
+ * working a lead, not a place it sits.
+ */
+export function LeadPipelineBoard({ search, priority, source }: BoardFilters) {
   const navigate = useNavigate();
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
-      {LEAD_STATUS_PIPELINE.map((status) => (
-        <PipelineColumn key={status} status={status} search={search} onOpen={(id) => navigate(`/leads/${id}`)} />
+      {STAGE_PIPELINE.map((stage) => (
+        <PipelineColumn
+          key={stage}
+          stage={stage}
+          search={search}
+          priority={priority}
+          source={source}
+          onOpen={(id) => navigate(`/leads/${id}`)}
+        />
       ))}
     </div>
   );
 }
 
-function PipelineColumn({ status, search, onOpen }: { status: string; search: string; onOpen: (id: string) => void }) {
-  const { data, isLoading } = useLeads({ status: status as never, search: search || undefined, limit: 50 });
-  const tone = toneForStatus(status);
+function PipelineColumn({
+  stage,
+  search,
+  priority,
+  source,
+  onOpen,
+}: BoardFilters & { stage: LeadStage; onOpen: (id: string) => void }) {
+  const statuses = STATUSES_BY_STAGE[stage];
+  const { data, isLoading } = useLeads({
+    // One status goes on `status`; the raw column's three go on `statuses`.
+    status: statuses.length === 1 ? statuses[0] : undefined,
+    statuses: statuses.length > 1 ? statuses.join(",") : undefined,
+    search: search || undefined,
+    priority,
+    source,
+    limit: 50,
+  });
 
   return (
     <div className="w-[280px] shrink-0 rounded-xl border border-border bg-muted/30 p-2.5">
       <div className="mb-2 flex items-center gap-2 px-1">
-        <span className={cn("h-1.5 w-1.5 rounded-full", COLUMN_DOT[tone])} />
-        <span className="text-[13px] font-medium text-foreground">{toTitleCase(status)}</span>
+        <span className={cn("h-1.5 w-1.5 rounded-full", COLUMN_DOT[stage])} />
+        <span className="text-[13px] font-medium text-foreground">{STAGE_LABELS[stage]}</span>
         <span className="ml-auto rounded-md bg-muted px-1.5 text-[11px] font-medium text-muted-foreground tabular-nums">
           {data?.total ?? "—"}
         </span>
@@ -77,7 +107,7 @@ function PipelineColumn({ status, search, onOpen }: { status: string; search: st
         ))}
 
         {!isLoading && data?.items.length === 0 && (
-          <p className="px-1 py-6 text-center text-xs text-muted-foreground">No leads</p>
+          <p className="px-1 py-6 text-center text-xs text-muted-foreground">Nobody here</p>
         )}
       </div>
     </div>

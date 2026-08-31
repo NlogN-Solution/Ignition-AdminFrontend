@@ -56,13 +56,42 @@ export function useIntakes(params: Parameters<typeof academicService.intakes.lis
   });
 }
 
-function useInvalidateAcademic() {
+/**
+ * Invalidate one entity, not the whole module.
+ *
+ * This used to blow away all of `["academic"]` on every mutation, which is
+ * fine at a hundred rows and wasteful now the catalogue holds ~4,800 courses:
+ * renaming one country refetched every course list on screen. Countries and
+ * universities still cascade downward, because a rename really does change
+ * what the lists below them display.
+ */
+type AcademicEntity = "countries" | "universities" | "programs" | "intakes";
+
+/**
+ * The detail queries key on `*-detail` rather than the list key, so they have
+ * to be named explicitly — a prefix invalidation of `["academic","programs"]`
+ * would leave an open course sheet showing stale data.
+ */
+const CASCADES: Record<AcademicEntity, string[]> = {
+  countries: ["countries", "universities", "university-detail", "programs", "program-detail"],
+  universities: ["universities", "university-detail", "programs", "program-detail"],
+  programs: ["programs", "program-detail", "intakes"],
+  intakes: ["intakes"],
+};
+
+function useInvalidateAcademic(entity: AcademicEntity) {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: ["academic"] });
+  return () => {
+    for (const key of CASCADES[entity]) {
+      void queryClient.invalidateQueries({ queryKey: ["academic", key] });
+    }
+    // The website module reads the same rows through its own keys.
+    void queryClient.invalidateQueries({ queryKey: ["website"] });
+  };
 }
 
 export function useCreateCountry() {
-  const invalidate = useInvalidateAcademic();
+  const invalidate = useInvalidateAcademic("countries");
   return useMutation({
     mutationFn: (payload: CountryPayload) => academicService.countries.create(payload),
     onSuccess: () => {
@@ -74,7 +103,7 @@ export function useCreateCountry() {
 }
 
 export function useCreateUniversity() {
-  const invalidate = useInvalidateAcademic();
+  const invalidate = useInvalidateAcademic("universities");
   return useMutation({
     mutationFn: (payload: UniversityPayload) => academicService.universities.create(payload),
     onSuccess: () => {
@@ -86,7 +115,7 @@ export function useCreateUniversity() {
 }
 
 export function useCreateProgram() {
-  const invalidate = useInvalidateAcademic();
+  const invalidate = useInvalidateAcademic("programs");
   return useMutation({
     mutationFn: (payload: ProgramPayload) => academicService.programs.create(payload),
     onSuccess: () => {
@@ -98,7 +127,7 @@ export function useCreateProgram() {
 }
 
 export function useCreateIntake() {
-  const invalidate = useInvalidateAcademic();
+  const invalidate = useInvalidateAcademic("intakes");
   return useMutation({
     mutationFn: (payload: IntakePayload) => academicService.intakes.create(payload),
     onSuccess: () => {
@@ -110,7 +139,7 @@ export function useCreateIntake() {
 }
 
 export function useDeleteCountry() {
-  const invalidate = useInvalidateAcademic();
+  const invalidate = useInvalidateAcademic("countries");
   return useMutation({
     mutationFn: (id: string) => academicService.countries.remove(id),
     onSuccess: () => {
@@ -122,7 +151,7 @@ export function useDeleteCountry() {
 }
 
 export function useDeleteUniversity() {
-  const invalidate = useInvalidateAcademic();
+  const invalidate = useInvalidateAcademic("universities");
   return useMutation({
     mutationFn: (id: string) => academicService.universities.remove(id),
     onSuccess: () => {
@@ -134,7 +163,7 @@ export function useDeleteUniversity() {
 }
 
 export function useDeleteProgram() {
-  const invalidate = useInvalidateAcademic();
+  const invalidate = useInvalidateAcademic("programs");
   return useMutation({
     mutationFn: (id: string) => academicService.programs.remove(id),
     onSuccess: () => {
@@ -146,7 +175,7 @@ export function useDeleteProgram() {
 }
 
 export function useDeleteIntake() {
-  const invalidate = useInvalidateAcademic();
+  const invalidate = useInvalidateAcademic("intakes");
   return useMutation({
     mutationFn: (id: string) => academicService.intakes.remove(id),
     onSuccess: () => {

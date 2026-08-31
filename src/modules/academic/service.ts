@@ -27,7 +27,9 @@ export const academicService = {
     remove: async (id: string) => (await apiClient.delete<CountryRead>(`/countries/${id}`)).data,
   },
   universities: {
-    list: async (params: ListParams & { country_id?: string } = {}) =>
+    // `is_partner` was never wired through, though GET /universities has
+    // always accepted it.
+    list: async (params: ListParams & { country_id?: string; is_partner?: boolean } = {}) =>
       (await apiClient.get<ListResponse<UniversityRead>>("/universities", { params })).data,
     get: async (id: string) => (await apiClient.get<UniversityRead>(`/universities/${id}`)).data,
     create: async (payload: UniversityPayload) => (await apiClient.post<UniversityRead>("/universities", payload)).data,
@@ -36,7 +38,8 @@ export const academicService = {
     remove: async (id: string) => (await apiClient.delete<UniversityRead>(`/universities/${id}`)).data,
   },
   programs: {
-    list: async (params: ListParams & { university_id?: string } = {}) =>
+    // Same for `degree_level` on GET /programs.
+    list: async (params: ListParams & { university_id?: string; degree_level?: string } = {}) =>
       (await apiClient.get<ListResponse<ProgramRead>>("/programs", { params })).data,
     get: async (id: string) => (await apiClient.get<ProgramRead>(`/programs/${id}`)).data,
     create: async (payload: ProgramPayload) => (await apiClient.post<ProgramRead>("/programs", payload)).data,

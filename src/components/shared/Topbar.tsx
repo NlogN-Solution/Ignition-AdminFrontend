@@ -67,18 +67,20 @@ export function Topbar() {
   const dueFollowUpCount = dueFollowUps?.items.filter((f) => new Date(f.scheduled_at) <= new Date()).length ?? 0;
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-sm">
+    /* Sticky inside the scroll container, so the page slides under it. The
+       hairline is the only edge; the blur does the rest. */
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/80 bg-[color-mix(in_srgb,var(--background)_72%,transparent)] px-5 backdrop-blur-[28px] backdrop-saturate-150 sm:px-8">
       <Breadcrumbs />
 
       <div className="ml-auto flex items-center gap-1.5">
         <button
           type="button"
           onClick={() => setCommandPaletteOpen(true)}
-          className="flex h-8 w-56 items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted"
+          className="flex h-8 w-60 items-center gap-2 rounded-full bg-black/[0.045] px-3 text-[13px] text-muted-foreground transition-colors duration-200 hover:bg-black/[0.07] dark:bg-white/[0.06] dark:hover:bg-white/[0.10]"
         >
           <Search className="h-3.5 w-3.5" />
           Search or jump to…
-          <kbd className="ml-auto rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>
+          <kbd className="ml-auto font-mono text-[10.5px] tracking-tight opacity-60">⌘K</kbd>
         </button>
 
         {user?.role !== UserRole.STUDENT && (
@@ -112,15 +114,15 @@ export function Topbar() {
             <Button variant="ghost" size="icon" className="relative h-8 w-8">
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[9px] font-medium text-white">
+                <span className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[9px] font-medium text-white shadow-[var(--shadow-1)]">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80 p-0">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <span className="text-sm font-medium">Notifications</span>
+            <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
+              <span className="text-[13px] font-semibold tracking-[-0.01em]">Notifications</span>
               <Link to="/notifications" className="text-xs text-primary hover:underline">
                 View all
               </Link>
@@ -139,7 +141,7 @@ export function Topbar() {
                       if (route) navigate(route);
                     }}
                     className={cn(
-                      "flex w-full items-start gap-2 border-b border-border/60 px-3 py-2.5 text-left transition-colors last:border-none hover:bg-muted/50",
+                      "flex w-full items-start gap-2.5 border-b border-border/50 px-3.5 py-2.5 text-left transition-colors duration-150 last:border-none hover:bg-black/[0.03] dark:hover:bg-white/[0.05]",
                     )}
                   >
                     <span className={cn("mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", n.is_read ? "bg-transparent" : "bg-primary")} />
@@ -162,15 +164,15 @@ export function Topbar() {
               <Button variant="ghost" size="icon" className="relative h-8 w-8">
                 <MessageCircle className="h-4 w-4" />
                 {unreadMessageCount > 0 && (
-                  <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[9px] font-medium text-white">
+                  <span className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[9px] font-medium text-white shadow-[var(--shadow-1)]">
                     {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
                   </span>
                 )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                <span className="text-sm font-medium">Messages</span>
+              <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
+                <span className="text-[13px] font-semibold tracking-[-0.01em]">Messages</span>
                 <Link to="/communication" className="text-xs text-primary hover:underline">
                   View all
                 </Link>
@@ -184,7 +186,7 @@ export function Topbar() {
                       type="button"
                       key={thread.student_id}
                       onClick={() => navigate("/communication")}
-                      className="flex w-full items-start gap-2 border-b border-border/60 px-3 py-2.5 text-left transition-colors last:border-none hover:bg-muted/50"
+                      className="flex w-full items-start gap-2.5 border-b border-border/50 px-3.5 py-2.5 text-left transition-colors duration-150 last:border-none hover:bg-black/[0.03] dark:hover:bg-white/[0.05]"
                     >
                       <span className={cn("mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", thread.unread_count > 0 ? "bg-primary" : "bg-transparent")} />
                       <div className="min-w-0 flex-1">
@@ -209,15 +211,15 @@ export function Topbar() {
               <Button variant="ghost" size="icon" className="relative h-8 w-8">
                 <CalendarClock className="h-4 w-4" />
                 {dueFollowUpCount > 0 && (
-                  <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[9px] font-medium text-white">
+                  <span className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[9px] font-medium text-white shadow-[var(--shadow-1)]">
                     {dueFollowUpCount > 9 ? "9+" : dueFollowUpCount}
                   </span>
                 )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                <span className="text-sm font-medium">Follow-ups</span>
+              <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
+                <span className="text-[13px] font-semibold tracking-[-0.01em]">Follow-ups</span>
                 <Link to="/leads" className="text-xs text-primary hover:underline">
                   View all
                 </Link>
@@ -231,7 +233,7 @@ export function Topbar() {
                       type="button"
                       key={followUp.id}
                       onClick={() => navigate(`/leads/${followUp.lead_id}`)}
-                      className="flex w-full items-start gap-2 border-b border-border/60 px-3 py-2.5 text-left transition-colors last:border-none hover:bg-muted/50"
+                      className="flex w-full items-start gap-2.5 border-b border-border/50 px-3.5 py-2.5 text-left transition-colors duration-150 last:border-none hover:bg-black/[0.03] dark:hover:bg-white/[0.05]"
                     >
                       <span
                         className={cn(
@@ -264,7 +266,7 @@ export function Topbar() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="ml-1 rounded-full">
-              <Avatar className="h-8 w-8 border border-border">
+              <Avatar className="h-8 w-8 ring-1 ring-black/10 transition-transform duration-200 hover:scale-[1.04] dark:ring-white/12">
                 <AvatarFallback className="bg-primary/10 text-[12px] font-medium text-primary">
                   {initials(user?.first_name, user?.last_name)}
                 </AvatarFallback>

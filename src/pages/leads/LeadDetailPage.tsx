@@ -2,29 +2,41 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft,
-  Loader2,
-  Mail,
-  Phone,
-  Globe,
+  ArrowRightCircle,
   BookOpen,
   CalendarClock,
-  UserCog,
-  ShieldCheck,
-  ArrowRightCircle,
-  XCircle,
-  Trash2,
+  CalendarDays,
   Clock,
-  Tag,
+  FilePlus2,
+  FileText,
+  Globe,
+  KeyRound,
+  Loader2,
+  Mail,
+  MoreHorizontal,
   Pencil,
+  Phone,
+  RotateCcw,
+  ShieldCheck,
+  Tag,
+  Trash2,
+  UserCog,
+  UserSquare2,
+  Wallet,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -34,9 +46,11 @@ import { Label } from "@/components/ui/label";
 import { UserPicker } from "@/components/shared/UserPicker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBreadcrumbStore } from "@/hooks/useBreadcrumbStore";
+import { useQueryFlagDialog } from "@/hooks/useQueryFlagDialog";
 import { useAuthStore } from "@/services/authStore";
-import { isManagerRole } from "@/constants/permissions";
+import { canAccessModule, canBrowseApplicants, isManagerRole } from "@/constants/permissions";
 import { StaffNameCell } from "@/modules/users/StaffNameCell";
+import { useUser } from "@/modules/users/hooks";
 import {
   useAssignLead,
   useChangeLeadStatus,
@@ -51,10 +65,46 @@ import { ConvertLeadDialog } from "@/modules/leads/ConvertLeadDialog";
 import { LeadFormDialog } from "@/modules/leads/LeadFormDialog";
 import { LostLeadDialog } from "@/modules/leads/LostLeadDialog";
 import { LeadFollowUpTimeline } from "@/modules/leads/LeadFollowUpTimeline";
+import { LeadStageBadge } from "@/modules/leads/LeadStageBadge";
+import { LeadClientSummaryCard } from "@/modules/leads/LeadClientSummaryCard";
+import { LeadApplicationsTab } from "@/modules/leads/LeadApplicationsTab";
 import { PriorityBadge } from "@/modules/leads/PriorityBadge";
-import type { LeadFollowUpRead } from "@/modules/leads/types";
+import { stageOf, STAGE_LABELS, type LeadStage } from "@/modules/leads/types";
+import { ApplicationFormDialog } from "@/modules/applications/ApplicationFormDialog";
+import { DocumentUploadDialog } from "@/modules/documents/DocumentUploadDialog";
+import { PaymentFormDialog } from "@/modules/payments/PaymentFormDialog";
+import { AppointmentFormDialog } from "@/modules/appointments/AppointmentFormDialog";
 import { LeadStatus, UserRole } from "@/types/enums";
 import { formatDate, formatDateTime, formatRelativeTime, toTitleCase } from "@/utils/format";
+
+/**
+ * Three tabs, always. The stage decides which three — a raw lead has no
+ * applications and a client is past scheduling qualification calls — so the page
+ * never grows a row of tabs that are empty for the person in front of you.
+ */
+const TABS_BY_STAGE: Record<LeadStage, { value: string; label: string }[]> = {
+  raw: [
+    { value: "overview", label: "Overview" },
+    { value: "follow-ups", label: "Follow-ups" },
+    { value: "activity", label: "Activity" },
+  ],
+  prospect: [
+    { value: "overview", label: "Overview" },
+    { value: "follow-ups", label: "Follow-ups" },
+    { value: "activity", label: "Activity" },
+  ],
+  client: [
+    { value: "overview", label: "Overview" },
+    { value: "applications", label: "Applications" },
+    { value: "activity", label: "Activity" },
+  ],
+  lost: [
+    { value: "overview", label: "Overview" },
+    { value: "activity", label: "Activity" },
+  ],
+};
+
+type QuickDialog = "document" | "payment" | "appointment" | null;
 
 export function LeadDetailPage() {
   const { leadId } = useParams();
@@ -63,17 +113,29 @@ export function LeadDetailPage() {
   const setLabel = useBreadcrumbStore((s) => s.setLabel);
 
   const { data: lead, isLoading } = useLead(leadId);
-  const { data: activities, isLoading: activitiesLoading } = useLeadActivities(leadId);
   const changeStatus = useChangeLeadStatus(leadId ?? "");
   const qualifyLead = useQualifyLead(leadId ?? "");
   const assignLead = useAssignLead(leadId ?? "");
   const deleteLead = useDeleteLead();
 
+  const [tab, setTab] = useState("overview");
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignee, setAssignee] = useState<string | undefined>();
   const [convertOpen, setConvertOpen] = useState(false);
   const [lostOpen, setLostOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [fullProfileOpen, setFullProfileOpen] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(false);
+  const [quickDialog, setQuickDialog] = useState<QuickDialog>(null);
+  const [applicationOpen, setApplicationOpen] = useQueryFlagDialog("startApplication");
+  /** Set when the application dialog is opened from a shortlisted university. */
+  const [applicationUniversityId, setApplicationUniversityId] = useState<string | undefined>();
+
+  const stage = lead ? stageOf(lead.status) : "raw";
+  const clientUserId = stage === "client" ? (lead?.converted_user_id ?? undefined) : undefined;
+  // Deduplicated with the summary card's own query by React Query — the header needs
+  // `has_portal_access` to decide whether "Enable portal" belongs in the menu.
+  const { data: clientUser } = useUser(canBrowseApplicants(role) ? clientUserId : undefined);
 
   useEffect(() => {
     if (lead) setLabel(`${lead.first_name} ${lead.last_name ?? ""}`.trim());
@@ -96,8 +158,18 @@ export function LeadDetailPage() {
   }
 
   const canManage = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.COUNSELLOR;
-  const isRaw = lead.status === LeadStatus.NEW || lead.status === LeadStatus.CONTACTED || lead.status === LeadStatus.FOLLOW_UP;
-  const isTerminal = lead.status === LeadStatus.CONVERTED || lead.status === LeadStatus.LOST;
+  const isManager = isManagerRole(role);
+  const tabs = TABS_BY_STAGE[stage];
+  // Converting removes the Follow-ups trigger from under Radix. Without this the
+  // panel would go blank on exactly the action this page exists for.
+  const activeTab = tabs.some((t) => t.value === tab) ? tab : "overview";
+
+  const canStartApplication = Boolean(clientUserId) && canAccessModule(role, "applications");
+
+  function openApplication(universityId?: string) {
+    setApplicationUniversityId(universityId);
+    setApplicationOpen(true);
+  }
 
   return (
     <div>
@@ -111,109 +183,217 @@ export function LeadDetailPage() {
             <h1 className="text-[19px] font-semibold tracking-tight text-foreground">
               {lead.first_name} {lead.last_name ?? ""}
             </h1>
-            <StatusBadge status={lead.status} />
-            <PriorityBadge priority={lead.priority} />
+            <LeadStageBadge status={lead.status} />
+            {stage !== "client" && <PriorityBadge priority={lead.priority} />}
+            {clientUser?.has_portal_access && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                <KeyRound className="h-3 w-3" /> Portal active
+              </span>
+            )}
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">Lead • Created {formatDateTime(lead.created_at)}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {STAGE_LABELS[stage]} • Created {formatDateTime(lead.created_at)}
+          </p>
         </div>
 
         {canManage && (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-              <Pencil className="h-3.5 w-3.5" /> Edit
-            </Button>
+            {/* One forward action at a time — the stage decides which. */}
+            {stage === "raw" && (
+              <Button size="sm" onClick={() => qualifyLead.mutate(undefined)} disabled={qualifyLead.isPending}>
+                {qualifyLead.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                Qualify
+              </Button>
+            )}
+
+            {stage === "prospect" && (
+              <Button size="sm" onClick={() => setConvertOpen(true)}>
+                <ArrowRightCircle className="h-3.5 w-3.5" /> Convert to client
+              </Button>
+            )}
+
+            {stage === "client" && canAccessModule(role, "applications") && (
+              <Button
+                size="sm"
+                disabled={!canStartApplication}
+                title={canStartApplication ? undefined : "This client has no student account yet"}
+                onClick={() => openApplication()}
+              >
+                <FilePlus2 className="h-3.5 w-3.5" /> Start application
+              </Button>
+            )}
+
+            {stage === "lost" && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={changeStatus.isPending}
+                onClick={() => changeStatus.mutate({ status: LeadStatus.CONTACTED })}
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reopen
+              </Button>
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Change status
+                <Button variant="outline" size="icon" aria-label="More actions">
+                  <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {[LeadStatus.NEW, LeadStatus.CONTACTED, LeadStatus.FOLLOW_UP].map((s) => (
-                  <DropdownMenuItem key={s} disabled={s === lead.status} onSelect={() => changeStatus.mutate({ status: s })}>
-                    {toTitleCase(s)}
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit details
+                </DropdownMenuItem>
+
+                {stage !== "client" && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <ArrowRightCircle className="h-3.5 w-3.5" /> Change status
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {[LeadStatus.NEW, LeadStatus.CONTACTED, LeadStatus.FOLLOW_UP].map((s) => (
+                        <DropdownMenuItem key={s} disabled={s === lead.status} onSelect={() => changeStatus.mutate({ status: s })}>
+                          {toTitleCase(s)}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+
+                {isManager && (
+                  <DropdownMenuItem onSelect={() => setAssignOpen(true)}>
+                    <UserCog className="h-3.5 w-3.5" /> Assign owner
                   </DropdownMenuItem>
-                ))}
+                )}
+
+                {stage === "client" && clientUserId && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">Client</DropdownMenuLabel>
+                    {canBrowseApplicants(role) && (
+                      <DropdownMenuItem onSelect={() => setFullProfileOpen(true)}>
+                        <UserSquare2 className="h-3.5 w-3.5" /> View full profile
+                      </DropdownMenuItem>
+                    )}
+                    {clientUser && !clientUser.has_portal_access && (
+                      <DropdownMenuItem onSelect={() => setPortalOpen(true)}>
+                        <KeyRound className="h-3.5 w-3.5" /> Enable portal
+                      </DropdownMenuItem>
+                    )}
+                    {canAccessModule(role, "appointments") && (
+                      <DropdownMenuItem onSelect={() => setQuickDialog("appointment")}>
+                        <CalendarDays className="h-3.5 w-3.5" /> Book appointment
+                      </DropdownMenuItem>
+                    )}
+                    {canAccessModule(role, "documents") && (
+                      <>
+                        <DropdownMenuItem onSelect={() => setQuickDialog("document")}>
+                          <FileText className="h-3.5 w-3.5" /> Upload document
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => navigate(`/documents/${clientUserId}`)}>
+                          <FileText className="h-3.5 w-3.5" /> All documents
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {canAccessModule(role, "payments") && (
+                      <DropdownMenuItem onSelect={() => setQuickDialog("payment")}>
+                        <Wallet className="h-3.5 w-3.5" /> Record payment
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+
+                {stage !== "client" && stage !== "lost" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-danger focus:text-danger" onSelect={() => setLostOpen(true)}>
+                      <XCircle className="h-3.5 w-3.5" /> Mark lost
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {isManager && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-danger focus:text-danger"
+                      onSelect={() => {
+                        if (confirm("Delete this lead permanently?")) {
+                          deleteLead.mutate(lead.id, { onSuccess: () => navigate("/leads") });
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete lead
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {isManagerRole(role) && (
-              <Button variant="outline" size="sm" onClick={() => setAssignOpen(true)}>
-                <UserCog className="h-3.5 w-3.5" /> Assign
-              </Button>
-            )}
-
-            {isRaw && (
-              <Button variant="outline" size="sm" onClick={() => qualifyLead.mutate(undefined)} disabled={qualifyLead.isPending}>
-                <ShieldCheck className="h-3.5 w-3.5" /> Qualify
-              </Button>
-            )}
-
-            {!isTerminal && (
-              <Button size="sm" onClick={() => setConvertOpen(true)}>
-                <ArrowRightCircle className="h-3.5 w-3.5" /> Convert
-              </Button>
-            )}
-
-            {!isTerminal && (
-              <Button variant="outline" size="sm" className="text-danger hover:text-danger" onClick={() => setLostOpen(true)}>
-                <XCircle className="h-3.5 w-3.5" /> Mark lost
-              </Button>
-            )}
-
-            {isManagerRole(role) && (
-              <Button
-                variant="outline"
-                size="icon"
-                className="text-danger hover:text-danger"
-                onClick={() => {
-                  if (confirm("Delete this lead permanently?")) {
-                    deleteLead.mutate(lead.id, { onSuccess: () => navigate("/leads") });
-                  }
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
           </div>
         )}
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="follow-ups">Follow-Ups</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="communication">Communication</TabsTrigger>
+          {tabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border border-border bg-card p-4 lg:col-span-2">
-              <h2 className="mb-3 text-[13px] font-semibold text-foreground">Contact</h2>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <InfoRow icon={Phone} label="Phone" value={lead.phone} />
-                <InfoRow icon={Mail} label="Email" value={lead.email ?? "—"} />
-                <InfoRow icon={Globe} label="Interested country" value={lead.interested_country ?? "—"} />
-                <InfoRow icon={BookOpen} label="Interested course" value={lead.interested_course ?? "—"} />
-                <InfoRow icon={CalendarClock} label="Preferred intake" value={lead.preferred_intake ?? "—"} />
-                <InfoRow icon={Globe} label="Source" value={toTitleCase(lead.source)} />
+            <div className="space-y-4 lg:col-span-2">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <h2 className="mb-3 text-[13px] font-semibold text-foreground">Contact</h2>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <InfoRow icon={Phone} label="Phone" value={lead.phone} />
+                  <InfoRow icon={Mail} label="Email" value={lead.email ?? "—"} />
+                  <InfoRow icon={Globe} label="Interested country" value={lead.interested_country ?? "—"} />
+                  <InfoRow icon={BookOpen} label="Interested course" value={lead.interested_course ?? "—"} />
+                  <InfoRow icon={CalendarClock} label="Preferred intake" value={lead.preferred_intake ?? "—"} />
+                  <InfoRow icon={Globe} label="Source" value={toTitleCase(lead.source)} />
+                </div>
+
+                {lead.tags && lead.tags.length > 0 && (
+                  <div className="mt-4 border-t border-border pt-3">
+                    <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Tag className="h-3 w-3" /> Tags
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {lead.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {lead.tags && lead.tags.length > 0 && (
-                <div className="mt-4 border-t border-border pt-3">
-                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <Tag className="h-3 w-3" /> Tags
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {lead.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
+              {stage === "prospect" && !lead.email && (
+                <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 text-[13px] text-foreground">
+                  <span className="font-medium">Ready to convert?</span> This lead has no email address, so converting
+                  will create their student account under a placeholder one. Add a real address first if you have it.
+                </div>
+              )}
+
+              {stage === "client" && clientUser && canBrowseApplicants(role) && (
+                <LeadClientSummaryCard
+                  user={clientUser}
+                  fullProfileOpen={fullProfileOpen}
+                  onFullProfileOpenChange={setFullProfileOpen}
+                  portalOpen={portalOpen}
+                  onPortalOpenChange={setPortalOpen}
+                  onStartApplication={openApplication}
+                />
+              )}
+
+              {stage === "client" && !clientUserId && (
+                <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 text-[13px] text-foreground">
+                  This lead is marked converted but has no student account linked, so applications can't be started from
+                  here. Converting again from a lead with an email address will create one.
                 </div>
               )}
             </div>
@@ -234,7 +414,9 @@ export function LeadDetailPage() {
                       }
                     />
                   )}
-                  {lead.converted_at && (
+                  {/* Gated on the stage, not on the timestamp: reopening a lost lead
+                      leaves lost_at and lost_reason populated. */}
+                  {stage === "client" && lead.converted_at && (
                     <InfoRow
                       icon={ArrowRightCircle}
                       label="Converted"
@@ -246,59 +428,34 @@ export function LeadDetailPage() {
                       }
                     />
                   )}
-                  {lead.lost_at && (
+                  {stage === "lost" && lead.lost_at && (
                     <InfoRow icon={XCircle} label="Lost" value={<>{formatDate(lead.lost_at)}{lead.lost_reason && ` · ${toTitleCase(lead.lost_reason)}`}</>} />
                   )}
                 </div>
               </div>
+
+              <NotesCard leadId={lead.id} initialNotes={lead.remarks} />
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="timeline" className="mt-4">
-          <div className="rounded-xl border border-border bg-card p-4">
-            {activitiesLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
-              </div>
-            ) : !activities || activities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
-            ) : (
-              <ol className="space-y-4">
-                {activities.map((activity, idx) => (
-                  <li key={activity.id} className="relative flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Clock className="h-2.5 w-2.5" />
-                      </span>
-                      {idx < activities.length - 1 && <span className="mt-1 w-px flex-1 bg-border" />}
-                    </div>
-                    <div className="min-w-0 flex-1 pb-1">
-                      <p className="text-[13px] font-medium text-foreground">{activity.title ?? toTitleCase(activity.activity_type)}</p>
-                      {activity.description && <p className="text-xs text-muted-foreground">{activity.description}</p>}
-                      <p className="mt-0.5 text-[11px] text-muted-foreground/70">{formatRelativeTime(activity.created_at)}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
-        </TabsContent>
+        {tabs.some((t) => t.value === "follow-ups") && (
+          <TabsContent value="follow-ups" className="mt-4">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <FollowUpMethodChips leadId={lead.id} />
+              <LeadFollowUpTimeline leadId={lead.id} leadStatus={lead.status} />
+            </div>
+          </TabsContent>
+        )}
 
-        <TabsContent value="follow-ups" className="mt-4">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <LeadFollowUpTimeline leadId={lead.id} leadStatus={lead.status} />
-          </div>
-        </TabsContent>
+        {tabs.some((t) => t.value === "applications") && clientUserId && canAccessModule(role, "applications") && (
+          <TabsContent value="applications" className="mt-4">
+            <LeadApplicationsTab studentId={clientUserId} onStartApplication={() => openApplication()} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="notes" className="mt-4">
-          <NotesTab leadId={lead.id} initialNotes={lead.remarks} />
-        </TabsContent>
-
-        <TabsContent value="communication" className="mt-4">
-          <CommunicationTab leadId={lead.id} />
+        <TabsContent value="activity" className="mt-4">
+          <ActivityTab leadId={lead.id} />
         </TabsContent>
       </Tabs>
 
@@ -331,9 +488,43 @@ export function LeadDetailPage() {
         leadName={`${lead.first_name} ${lead.last_name ?? ""}`.trim()}
         open={convertOpen}
         onOpenChange={setConvertOpen}
+        onStartApplication={() => {
+          setConvertOpen(false);
+          setTab("overview");
+          openApplication();
+        }}
       />
       <LostLeadDialog leadId={lead.id} open={lostOpen} onOpenChange={setLostOpen} />
       <LeadFormDialog lead={lead} open={editOpen} onOpenChange={setEditOpen} />
+
+      {clientUserId && (
+        <>
+          <ApplicationFormDialog
+            open={applicationOpen}
+            onOpenChange={(o) => {
+              setApplicationOpen(o);
+              if (!o) setApplicationUniversityId(undefined);
+            }}
+            defaultStudentId={clientUserId}
+            defaultUniversityId={applicationUniversityId}
+          />
+          <DocumentUploadDialog
+            open={quickDialog === "document"}
+            onOpenChange={(o) => setQuickDialog(o ? "document" : null)}
+            defaultStudentId={clientUserId}
+          />
+          <PaymentFormDialog
+            open={quickDialog === "payment"}
+            onOpenChange={(o) => setQuickDialog(o ? "payment" : null)}
+            defaultStudentId={clientUserId}
+          />
+          <AppointmentFormDialog
+            open={quickDialog === "appointment"}
+            onOpenChange={(o) => setQuickDialog(o ? "appointment" : null)}
+            defaultStudentId={clientUserId}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -350,14 +541,15 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
   );
 }
 
-function NotesTab({ leadId, initialNotes }: { leadId: string; initialNotes: string | null }) {
+/** Was its own tab. It is two fields and a button — it belongs in the rail. */
+function NotesCard({ leadId, initialNotes }: { leadId: string; initialNotes: string | null }) {
   const updateLead = useUpdateLead(leadId);
   const [notes, setNotes] = useState(initialNotes ?? "");
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <h2 className="mb-3 text-[13px] font-semibold text-foreground">Internal notes</h2>
-      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={8} placeholder="Only visible to your team…" />
+      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={6} placeholder="Only visible to your team…" />
       <div className="mt-3 flex justify-end">
         <Button size="sm" disabled={notes === (initialNotes ?? "") || updateLead.isPending} onClick={() => updateLead.mutate({ remarks: notes })}>
           {updateLead.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -368,59 +560,71 @@ function NotesTab({ leadId, initialNotes }: { leadId: string; initialNotes: stri
   );
 }
 
-function CommunicationTab({ leadId }: { leadId: string }) {
-  const { data, isLoading } = useLeadFollowUps(leadId);
-
-  const grouped = useMemo(() => {
-    const byMethod = new Map<string, LeadFollowUpRead[]>();
-    for (const item of data?.items ?? []) {
-      if (!byMethod.has(item.method)) byMethod.set(item.method, []);
-      byMethod.get(item.method)!.push(item);
-    }
-    return byMethod;
-  }, [data]);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!data || data.items.length === 0) {
-    return (
-      <EmptyState
-        icon={Mail}
-        title="No communication history yet"
-        description="Calls, WhatsApp messages, emails, and meetings logged via follow-ups will appear here, grouped by channel."
-      />
-    );
-  }
+/**
+ * The activity query lives here rather than on the page, so opening a lead costs one
+ * request instead of two — Radix unmounts inactive tabs, so it only runs when read.
+ */
+function ActivityTab({ leadId }: { leadId: string }) {
+  const { data: activities, isLoading } = useLeadActivities(leadId);
 
   return (
-    <div className="space-y-4">
-      {Array.from(grouped.entries()).map(([method, items]) => (
-        <div key={method} className="rounded-xl border border-border bg-card p-4">
-          <h3 className="mb-2 text-[13px] font-semibold text-foreground">
-            {toTitleCase(method)} <span className="text-xs font-normal text-muted-foreground">({items.length})</span>
-          </h3>
-          <div className="divide-y divide-border">
-            {items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between py-2 text-sm">
-                <div>
-                  <p className="text-foreground">Attempt {item.attempt_number}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {item.completed_at ? formatDateTime(item.completed_at) : `Scheduled ${formatDateTime(item.scheduled_at)}`}
-                  </p>
-                </div>
-                {item.outcome && <StatusBadge status={item.outcome} />}
-              </div>
-            ))}
-          </div>
+    <div className="rounded-xl border border-border bg-card p-4">
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
         </div>
+      ) : !activities || activities.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+      ) : (
+        <ol className="space-y-4">
+          {activities.map((activity, idx) => (
+            <li key={activity.id} className="relative flex gap-3">
+              <div className="flex flex-col items-center">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Clock className="h-2.5 w-2.5" />
+                </span>
+                {idx < activities.length - 1 && <span className="mt-1 w-px flex-1 bg-border" />}
+              </div>
+              <div className="min-w-0 flex-1 pb-1">
+                <p className="text-[13px] font-medium text-foreground">{activity.title ?? toTitleCase(activity.activity_type)}</p>
+                {activity.description && <p className="text-xs text-muted-foreground">{activity.description}</p>}
+                <p className="mt-0.5 text-[11px] text-muted-foreground/70">{formatRelativeTime(activity.created_at)}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+/**
+ * All the Communication tab actually told you: which channels this person has been
+ * reached on, and how often. It was a whole tab re-grouping the follow-ups already
+ * shown below it; here it is a row of chips over the same cached query.
+ */
+function FollowUpMethodChips({ leadId }: { leadId: string }) {
+  const { data } = useLeadFollowUps(leadId);
+
+  const counts = useMemo(() => {
+    const byMethod = new Map<string, number>();
+    for (const item of data?.items ?? []) {
+      if (!item.completed_at) continue;
+      byMethod.set(item.method, (byMethod.get(item.method) ?? 0) + 1);
+    }
+    return Array.from(byMethod.entries());
+  }, [data]);
+
+  if (counts.length === 0) return null;
+
+  return (
+    <div className="mb-4 flex flex-wrap gap-1.5 border-b border-border pb-3">
+      {counts.map(([method, count]) => (
+        <span key={method} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          {toTitleCase(method)} <span className="font-medium text-foreground tabular-nums">{count}</span>
+        </span>
       ))}
     </div>
   );

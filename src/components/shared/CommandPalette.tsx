@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { UserPlus, GraduationCap, Moon, Sun, Monitor, Plus } from "lucide-react";
+import { UserPlus, Moon, Sun, Monitor, Plus } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -25,13 +25,6 @@ interface QuickLead {
   first_name: string;
   last_name: string | null;
   phone: string;
-}
-
-interface QuickUser {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
 }
 
 export function CommandPalette() {
@@ -59,7 +52,6 @@ export function CommandPalette() {
   }, [open]);
 
   const canSearchLeads = canAccessModule(role, "leads");
-  const canSearchApplicants = canAccessModule(role, "applicants");
 
   const { data: leadResults } = useQuery({
     queryKey: ["command-palette", "leads", debouncedQuery],
@@ -70,17 +62,6 @@ export function CommandPalette() {
     enabled: open && debouncedQuery.length > 1 && canSearchLeads,
   });
 
-  const { data: applicantResults } = useQuery({
-    queryKey: ["command-palette", "applicants", debouncedQuery],
-    queryFn: async () => {
-      const { data } = await apiClient.get<ListResponse<QuickUser>>("/users", {
-        params: { search: debouncedQuery, role: "student", limit: 5 },
-      });
-      return data.items;
-    },
-    enabled: open && debouncedQuery.length > 1 && canSearchApplicants,
-  });
-
   function go(path: string) {
     navigate(path);
     setOpen(false);
@@ -88,7 +69,7 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen} title="Command palette" description="Search records, jump to any page, or run a quick action">
-      <CommandInput placeholder="Search leads, applicants, pages…" value={query} onValueChange={setQuery} />
+      <CommandInput placeholder="Search leads, clients, pages…" value={query} onValueChange={setQuery} />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
@@ -104,23 +85,11 @@ export function CommandPalette() {
           </CommandGroup>
         )}
 
-        {applicantResults && applicantResults.length > 0 && (
-          <CommandGroup heading="Applicants">
-            {applicantResults.map((u) => (
-              <CommandItem key={u.id} onSelect={() => go(`/applicants/${u.id}`)}>
-                <GraduationCap className="text-muted-foreground" />
-                {u.first_name} {u.last_name}
-                <span className="ml-auto text-xs text-muted-foreground">{u.email}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
-
         {!debouncedQuery && (
           <CommandGroup heading="Quick actions">
             <CommandItem onSelect={() => go("/leads?new=1")}>
               <Plus className="text-muted-foreground" />
-              Add applicant / lead
+              Add lead
             </CommandItem>
             <CommandItem onSelect={() => go("/tasks?new=1")}>
               <Plus className="text-muted-foreground" />

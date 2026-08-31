@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from "react";
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { AppShell } from "@/layouts/AppShell";
@@ -12,8 +12,6 @@ import type { ModuleKey } from "@/constants/permissions";
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const LeadsPage = lazy(() => import("@/pages/leads/LeadsPage").then((m) => ({ default: m.LeadsPage })));
 const LeadDetailPage = lazy(() => import("@/pages/leads/LeadDetailPage").then((m) => ({ default: m.LeadDetailPage })));
-const ApplicantsPage = lazy(() => import("@/pages/applicants/ApplicantsPage").then((m) => ({ default: m.ApplicantsPage })));
-const ApplicantDetailPage = lazy(() => import("@/pages/applicants/ApplicantDetailPage").then((m) => ({ default: m.ApplicantDetailPage })));
 const ApplicationsPage = lazy(() => import("@/pages/applications/ApplicationsPage").then((m) => ({ default: m.ApplicationsPage })));
 const ApplicationDetailPage = lazy(() =>
   import("@/pages/applications/ApplicationDetailPage").then((m) => ({ default: m.ApplicationDetailPage })),
@@ -27,8 +25,32 @@ const PaymentsPage = lazy(() => import("@/pages/payments/PaymentsPage").then((m)
 const TasksPage = lazy(() => import("@/pages/tasks/TasksPage").then((m) => ({ default: m.TasksPage })));
 const NotificationsPage = lazy(() => import("@/pages/notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const UsersPage = lazy(() => import("@/pages/users/UsersPage").then((m) => ({ default: m.UsersPage })));
-const AcademicPage = lazy(() => import("@/pages/academic/AcademicPage").then((m) => ({ default: m.AcademicPage })));
 const SettingsPage = lazy(() => import("@/pages/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+
+const WebsiteUniversitiesPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteUniversitiesPage })));
+const WebsiteUniversityDetailPage = lazy(() =>
+  import("@/pages/website").then((m) => ({ default: m.WebsiteUniversityDetailPage })),
+);
+const WebsiteCoursesPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteCoursesPage })));
+const WebsiteCourseDetailPage = lazy(() =>
+  import("@/pages/website").then((m) => ({ default: m.WebsiteCourseDetailPage })),
+);
+const WebsiteCountriesPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteCountriesPage })));
+const WebsiteScholarshipsPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteScholarshipsPage })));
+const EligibilityAssessmentsPage = lazy(() =>
+  import("@/pages/eligibility").then((m) => ({ default: m.EligibilityAssessmentsPage })),
+);
+const EligibilityDetailPage = lazy(() =>
+  import("@/pages/eligibility").then((m) => ({ default: m.EligibilityDetailPage })),
+);
+const WebsitePagesPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsitePagesPage })));
+const WebsiteGuidesPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteGuidesPage })));
+const WebsiteBlogPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteBlogPage })));
+const WebsiteContentEditorPage = lazy(() =>
+  import("@/pages/website").then((m) => ({ default: m.WebsiteContentEditorPage })),
+);
+const WebsiteMediaPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteMediaPage })));
+const WebsiteImportsPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteImportsPage })));
 
 const PeopleDirectoryPage = lazy(() => import("@/pages/people/PeopleDirectoryPage").then((m) => ({ default: m.PeopleDirectoryPage })));
 const EmployeeProfilePage = lazy(() => import("@/pages/people/EmployeeProfilePage").then((m) => ({ default: m.EmployeeProfilePage })));
@@ -87,8 +109,12 @@ export const router = createBrowserRouter([
           { path: "/", element: withModule("dashboard", <DashboardPage />) },
           { path: "/leads", element: withModule("leads", <LeadsPage />) },
           { path: "/leads/:leadId", element: withModule("leads", <LeadDetailPage />) },
-          { path: "/applicants", element: withModule("applicants", <ApplicantsPage />) },
-          { path: "/applicants/:userId", element: withModule("applicants", <ApplicantDetailPage />) },
+          // Applicants folded into Leads. Old links (bookmarks, the funnel widget's
+          // former target, anything a counsellor saved) land on the Clients tab
+          // rather than a 404. The :userId form drops the id: it named a student
+          // account, and the lead page is keyed by lead.
+          { path: "/applicants", element: <Navigate to="/leads?tab=client" replace /> },
+          { path: "/applicants/:userId", element: <Navigate to="/leads?tab=client" replace /> },
           { path: "/applications", element: withModule("applications", <ApplicationsPage />) },
           { path: "/applications/:applicationId", element: withModule("applications", <ApplicationDetailPage />) },
           { path: "/appointments", element: withModule("appointments", <AppointmentsPage />) },
@@ -98,7 +124,23 @@ export const router = createBrowserRouter([
           { path: "/tasks", element: withModule("tasks", <TasksPage />) },
           { path: "/notifications", element: withModule("notifications", <NotificationsPage />) },
           { path: "/users", element: withModule("users", <UsersPage />) },
-          { path: "/academic/:tab?", element: withModule("academic", <AcademicPage />) },
+          { path: "/eligibility", element: withModule("eligibility", <EligibilityAssessmentsPage />) },
+          { path: "/eligibility/:assessmentId", element: withModule("eligibility", <EligibilityDetailPage />) },
+          { path: "/website/universities", element: withModule("website", <WebsiteUniversitiesPage />) },
+          { path: "/website/universities/:universityId", element: withModule("website", <WebsiteUniversityDetailPage />) },
+          { path: "/website/courses", element: withModule("website", <WebsiteCoursesPage />) },
+          { path: "/website/courses/:courseId", element: withModule("website", <WebsiteCourseDetailPage />) },
+          // Countries keep the `academic` module, not `website`: counsellors
+          // have always been able to manage them and moving the item in the
+          // sidebar is not a reason to take that away.
+          { path: "/website/countries", element: withModule("academic", <WebsiteCountriesPage />) },
+          { path: "/website/scholarships", element: withModule("website", <WebsiteScholarshipsPage />) },
+          { path: "/website/pages", element: withModule("website", <WebsitePagesPage />) },
+          { path: "/website/guides", element: withModule("website", <WebsiteGuidesPage />) },
+          { path: "/website/blog", element: withModule("website", <WebsiteBlogPage />) },
+          { path: "/website/content/:pageId", element: withModule("website", <WebsiteContentEditorPage />) },
+          { path: "/website/media", element: withModule("website", <WebsiteMediaPage />) },
+          { path: "/website/imports", element: withModule("website", <WebsiteImportsPage />) },
           { path: "/people", element: withModule("people", <PeopleDirectoryPage />) },
           { path: "/people/departments", element: withModule("departments", <DepartmentsPage />) },
           { path: "/people/:employeeId", element: withModule("people", <EmployeeProfilePage />) },

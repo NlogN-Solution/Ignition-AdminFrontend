@@ -50,9 +50,15 @@ export interface UniversityPayload {
   phone?: string | null;
   address?: string | null;
   city?: string | null;
+  /** Dropped from this payload until now, so the field could never be set. */
+  logo_url?: string | null;
   ranking?: number | null;
   is_partner?: boolean;
   is_active?: boolean;
+  acceptance_rate?: number | null;
+  faculties?: string[] | null;
+  highlights?: string[] | null;
+  campus_type?: string | null;
 }
 
 export interface ProgramRead {
@@ -81,6 +87,20 @@ export interface ProgramPayload {
   tuition_fee?: number | null;
   currency?: string | null;
   is_active?: boolean;
+  /**
+   * These were all missing, so the form could read them but never write them.
+   * Widened to match backend/app/schemas/academic.py `ProgramBase`.
+   */
+  intake?: string | null;
+  minimum_gpa?: number | null;
+  minimum_ielts?: number | null;
+  intakes_summary?: string[] | null;
+  highlights?: string[] | null;
+  outcomes?: string[] | null;
+  requirements?: Record<string, unknown> | null;
+  key_dates?: Record<string, unknown> | null;
+  course_type?: string | null;
+  image_url?: string | null;
 }
 
 export interface IntakeRead {

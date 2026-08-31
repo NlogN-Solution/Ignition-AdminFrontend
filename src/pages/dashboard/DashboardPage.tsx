@@ -9,7 +9,7 @@ import { PriorityDistributionChart } from "@/modules/dashboard/PriorityDistribut
 import { FollowUpReminders } from "@/modules/dashboard/FollowUpReminders";
 import { CounsellorLeaderboard } from "@/modules/dashboard/CounsellorLeaderboard";
 import { CountryUniversityCharts } from "@/modules/dashboard/CountryUniversityCharts";
-import { RecentApplicantsTable } from "@/modules/dashboard/RecentApplicantsTable";
+import { RecentClientsTable } from "@/modules/dashboard/RecentClientsTable";
 import { TaskBoardPreview } from "@/modules/dashboard/TaskBoardPreview";
 import { WorkflowBottlenecksWidget } from "@/modules/dashboard/WorkflowBottlenecksWidget";
 import { QuickActions } from "@/modules/dashboard/QuickActions";
@@ -44,7 +44,7 @@ export function DashboardPage() {
         widgets: [
           { id: "analytics", title: "Overview", render: <AnalyticsGrid />, span: "full" },
           { id: "revenue", title: "Revenue", render: <RevenueChart />, span: "full" },
-          { id: "recent-applicants", title: "Recent applicants", render: <RecentApplicantsTable />, span: "half" },
+          { id: "recent-clients", title: "Recent clients", render: <RecentClientsTable />, span: "half" },
           { id: "follow-ups", title: "Follow-up reminders", render: <FollowUpReminders />, span: "half" },
         ] satisfies DashboardWidget[],
       };
@@ -71,7 +71,7 @@ export function DashboardPage() {
           { id: "schedule", title: "Today's schedule", render: <TodaySchedule />, span: "third" },
           { id: "lead-funnel", title: "Lead funnel", render: <LeadFunnelWidget />, span: "third" },
           { id: "follow-ups", title: "Follow-up reminders", render: <FollowUpReminders />, span: "third" },
-          { id: "recent-applicants", title: "Recent applicants", render: <RecentApplicantsTable />, span: "full" },
+          { id: "recent-clients", title: "Recent clients", render: <RecentClientsTable />, span: "full" },
           { id: "task-board", title: "Task board", render: <TaskBoardPreview />, span: "full" },
           { id: "quick-actions", title: "Quick actions", render: <QuickActions />, span: "full" },
         ] satisfies DashboardWidget[],
@@ -87,7 +87,7 @@ export function DashboardPage() {
       { id: "lead-source", title: "Lead source", render: <LeadSourceChart />, span: "third" },
       { id: "priority", title: "Priority distribution", render: <PriorityDistributionChart />, span: "third" },
       { id: "follow-ups", title: "Follow-up reminders", render: <FollowUpReminders />, span: "third" },
-      { id: "recent-applicants", title: "Recent applicants", render: <RecentApplicantsTable />, span: "third" },
+      { id: "recent-clients", title: "Recent clients", render: <RecentClientsTable />, span: "third" },
       { id: "country-university", title: "Country & university interest", render: <CountryUniversityCharts />, span: "full" },
       { id: "workflow-bottlenecks", title: "Workflow bottlenecks", render: <WorkflowBottlenecksWidget />, span: "full" },
       { id: "task-board", title: "Task board", render: <TaskBoardPreview />, span: "full" },

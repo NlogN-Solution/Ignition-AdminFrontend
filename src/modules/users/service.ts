@@ -9,6 +9,7 @@ import type {
   StaffDirectoryParams,
   StudentEducationHistoryPayload,
   StudentEducationHistoryRead,
+  ResearchShortlist,
   StudentProfileRead,
   StudentProfileUpsertPayload,
   StudentWorkExperiencePayload,
@@ -106,6 +107,19 @@ export const userService = {
       if (status === 404) return null;
       throw error;
     }
+  },
+
+  /**
+   * The student's public-site shortlist, resolved against the real catalogue.
+   *
+   * Resolution is the backend's job, not this console's: the slugs are
+   * `universities.slug` and joining them is one query there against N lookups
+   * here — and the rule about never resolving a pre-import handoff belongs in
+   * one place rather than in every caller.
+   */
+  async getResearchShortlist(userId: string): Promise<ResearchShortlist> {
+    const { data } = await apiClient.get<ResearchShortlist>(`/users/${userId}/research`);
+    return data;
   },
 
   async upsertStudentProfile(userId: string, payload: StudentProfileUpsertPayload): Promise<StudentProfileRead> {

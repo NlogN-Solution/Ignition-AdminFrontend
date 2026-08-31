@@ -15,7 +15,10 @@ export const MODULE_ROLES = {
   // Every role gets a role-scoped dashboard now — see modules/dashboard.
   dashboard: ALL_ROLES,
   leads: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COUNSELLOR, UserRole.MARKETING],
-  applicants: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COUNSELLOR],
+  // Narrower than `leads` on purpose, and matched by the API: an assessment
+  // carries a named person's grades, finances and passport readiness, which is
+  // a counselling record rather than a marketing one.
+  eligibility: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COUNSELLOR],
   applications: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COUNSELLOR, UserRole.ADMISSIONS, UserRole.STUDENT],
   appointments: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COUNSELLOR, UserRole.SUPPORT, UserRole.STUDENT],
   documents: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COUNSELLOR, UserRole.ADMISSIONS, UserRole.MANAGER, UserRole.STUDENT],
@@ -100,6 +103,11 @@ export const MODULE_ROLES = {
   rolesPermissions: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
   invoicesExpenses: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
   workflow: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+  // The public site's own content. Marketing is here because the backend's
+  // catalogue and CMS routers use require_role(ADMIN, MARKETING), and this
+  // matrix has to keep mirroring that — a role listed here that the API
+  // refuses would put a 403 behind a nav entry.
+  website: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.MARKETING],
   settings: ALL_ROLES,
 } as const;
 
@@ -118,7 +126,11 @@ export function isManagerRole(role: UserRole | undefined): boolean {
   return role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
 }
 
-/** GET /users(/{id}) also allows counsellor, scoped server-side to student accounts only. */
+/**
+ * GET /users(/{id}) also allows counsellor, scoped server-side to student accounts
+ * only. There is no `applicants` module any more — this is the gate on reading the
+ * student account behind a client, wherever that is shown.
+ */
 export function canBrowseApplicants(role: UserRole | undefined): boolean {
   return isManagerRole(role) || role === UserRole.COUNSELLOR;
 }

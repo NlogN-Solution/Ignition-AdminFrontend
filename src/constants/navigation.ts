@@ -1,7 +1,9 @@
 import {
+  ClipboardCheck,
   LayoutDashboard,
+  Newspaper,
   UserPlus,
-  GraduationCap,
+  BookMarked,
   FileText,
   CalendarDays,
   Wallet,
@@ -28,6 +30,9 @@ import {
   Receipt,
   Settings,
   Users,
+  Award,
+  Image,
+  FileSpreadsheet,
   type LucideIcon,
 } from "lucide-react";
 import type { ModuleKey } from "./permissions";
@@ -54,7 +59,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Admissions",
     items: [
       { label: "Leads", path: "/leads", icon: UserPlus, module: "leads" },
-      { label: "Applicants", path: "/applicants", icon: GraduationCap, module: "applicants" },
+      { label: "Eligibility", path: "/eligibility", icon: ClipboardCheck, module: "eligibility" },
       { label: "Applications", path: "/applications", icon: FileText, module: "applications" },
       { label: "Appointments", path: "/appointments", icon: CalendarDays, module: "appointments" },
     ],
@@ -68,12 +73,17 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Academic data",
+    label: "Website",
     items: [
-      { label: "Countries", path: "/academic/countries", icon: Globe2, module: "academic" },
-      { label: "Universities", path: "/academic/universities", icon: Building2, module: "academic" },
-      { label: "Courses", path: "/academic/programs", icon: BookOpen, module: "academic" },
-      { label: "Intakes", path: "/academic/intakes", icon: CalendarClock, module: "academic" },
+      { label: "Universities", path: "/website/universities", icon: Building2, module: "website" },
+      { label: "Courses", path: "/website/courses", icon: BookOpen, module: "website" },
+      { label: "Countries", path: "/website/countries", icon: Globe2, module: "academic" },
+      { label: "Scholarships", path: "/website/scholarships", icon: Award, module: "website" },
+      { label: "Pages", path: "/website/pages", icon: FileText, module: "website" },
+      { label: "Guides", path: "/website/guides", icon: BookMarked, module: "website" },
+      { label: "Blog", path: "/website/blog", icon: Newspaper, module: "website" },
+      { label: "Media", path: "/website/media", icon: Image, module: "website" },
+      { label: "Imports", path: "/website/imports", icon: FileSpreadsheet, module: "website" },
     ],
   },
   {

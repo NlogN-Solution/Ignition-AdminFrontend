@@ -10,6 +10,7 @@ export const queryKeys = {
   },
   studentProfile: {
     detail: (userId: string) => ["student-profile", userId] as const,
+    research: (userId: string) => ["student-profile", userId, "research"] as const,
   },
   employeeProfile: {
     detail: (userId: string) => ["employee-profile", userId] as const,
@@ -113,6 +114,31 @@ export const queryKeys = {
     universities: (params: unknown) => ["academic", "universities", params] as const,
     programs: (params: unknown) => ["academic", "programs", params] as const,
     intakes: (params: unknown) => ["academic", "intakes", params] as const,
+  },
+  // Scoped per entity on purpose: `academic` invalidates one shared key on
+  // every mutation, which is wasteful once the catalogue holds ~4,800 rows.
+  website: {
+    all: ["website"] as const,
+    universities: (params: unknown) => ["website", "universities", params] as const,
+    university: (id: string) => ["website", "university", id] as const,
+    routes: (universityId: string) => ["website", "routes", universityId] as const,
+    courses: (params: unknown) => ["website", "courses", params] as const,
+    course: (id: string) => ["website", "course", id] as const,
+    courseProfiles: (params: unknown) => ["website", "course-profiles", params] as const,
+    scholarships: (params: unknown) => ["website", "scholarships", params] as const,
+    media: (params: unknown) => ["website", "media", params] as const,
+  },
+  content: {
+    all: ["content"] as const,
+    pages: (params: unknown) => ["content", "pages", params] as const,
+    page: (id: string) => ["content", "page", id] as const,
+    posts: (params: unknown) => ["content", "posts", params] as const,
+  },
+  eligibility: {
+    all: ["eligibility"] as const,
+    list: (params: unknown) => ["eligibility", "list", params] as const,
+    stats: ["eligibility", "stats"] as const,
+    detail: (id: string) => ["eligibility", "detail", id] as const,
   },
   dashboard: {
     overview: ["dashboard", "overview"] as const,

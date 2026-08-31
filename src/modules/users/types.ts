@@ -113,6 +113,81 @@ export interface EmployeeEmploymentEventRead {
   created_at: string;
 }
 
+/**
+ * Research a student did on the public Ignition platform before they had an
+ * account, carried across at sign-up and stored under
+ * `StudentProfile.preferences.research`.
+ *
+ * The ids here are the public catalogue's slugs — "example-metropolitan",
+ * "computer-science" — and are NOT this backend's program/university UUIDs.
+ * Nothing may join on them. They exist so a counsellor can see what the
+ * student was actually looking at when they decided to apply, and so the
+ * labels render without a lookup.
+ */
+export interface StudentResearchCourse {
+  id: string | null;
+  title: string;
+  qualification: string | null;
+  subject: string | null;
+}
+
+export interface StudentResearchUniversity {
+  id: string | null;
+  name: string;
+  city: string | null;
+}
+
+export interface StudentResearch {
+  source: string;
+  /**
+   * Which catalogue the slugs below belong to. `live` means they resolve;
+   * `example` means the handoff predates the catalogue import and its ids
+   * name institutions that never existed.
+   */
+  catalogue?: "live" | "example";
+  importedAt: string | null;
+  researchedAt: string | null;
+  stage: string | null;
+  career: { id: string | null; title: string; match: number | null } | null;
+  alsoMatched: { id: string | null; title: string; match: number | null }[];
+  courses: StudentResearchCourse[];
+  universities: StudentResearchUniversity[];
+  compared: string[];
+  budget: { annualTuition: number | null; monthlyLiving: number | null; currency: string } | null;
+}
+
+/**
+ * The student portal's own onboarding blocks, opaque to the backend. Only the
+ * fields staff actually read are typed; the rest stay unknown rather than
+ * being guessed at.
+ */
+/** One shortlisted institution, resolved by the backend to a catalogue row. */
+export interface ResearchUniversity {
+  slug: string;
+  id: string;
+  name: string;
+  city: string | null;
+  region: string | null;
+  is_published: boolean;
+  course_count: number;
+}
+
+export interface ResearchShortlist {
+  catalogue: "live" | "example" | "none";
+  universities: ResearchUniversity[];
+  /** Slugs that did not resolve — a withdrawn record, or a pre-import handoff. */
+  unresolved: string[];
+}
+
+export interface StudentProfilePreferences {
+  research?: StudentResearch;
+  intendedStudyArea?: string;
+  destinations?: string | string[];
+  studyMode?: string;
+  feeStructure?: string;
+  [key: string]: unknown;
+}
+
 export interface StudentProfileRead {
   id: string;
   user_id: string;
@@ -135,11 +210,17 @@ export interface StudentProfileRead {
   permanent_address: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
+  preferences: StudentProfilePreferences | null;
   created_at: string;
   updated_at: string;
 }
 
-export type StudentProfileUpsertPayload = Partial<Omit<StudentProfileRead, "id" | "user_id" | "created_at" | "updated_at">>;
+/** `preferences` is excluded deliberately: it is the student's own space, and
+ * the staff profile form has no field for it — allowing it here would make it
+ * possible to blank a student's carried-over research with a partial save. */
+export type StudentProfileUpsertPayload = Partial<
+  Omit<StudentProfileRead, "id" | "user_id" | "created_at" | "updated_at" | "preferences">
+>;
 
 export interface StudentEducationHistoryRead {
   id: string;

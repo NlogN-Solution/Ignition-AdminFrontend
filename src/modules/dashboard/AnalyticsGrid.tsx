@@ -37,7 +37,7 @@ export function AnalyticsGrid() {
       accent: "success" as const,
       format: (v: number) => `${Math.round(v)}%`,
     },
-    { key: "applicants", label: "Applicants", value: counts.applicants, icon: GraduationCap, href: "/applicants", accent: "primary" as const },
+    { key: "clients", label: "Clients", value: counts.clients, icon: GraduationCap, href: "/leads?tab=client", accent: "primary" as const },
     { key: "applications", label: "Applications", value: counts.applications, icon: FileText, href: "/applications", accent: "primary" as const },
     { key: "offers", label: "Offers received", value: counts.offers, icon: Award, href: "/applications", accent: "success" as const },
     { key: "visa", label: "Visa in process", value: counts.visaProcessing, icon: Plane, href: "/applications", accent: "warning" as const },
@@ -52,9 +52,9 @@ export function AnalyticsGrid() {
     },
     { key: "tasks", label: "Open tasks", value: counts.openTasks, icon: CheckSquare, href: "/tasks", accent: "warning" as const },
     { key: "appointments", label: "Appointments", value: counts.appointments, icon: CalendarDays, href: "/appointments", accent: "info" as const },
-    { key: "universities", label: "Universities", value: counts.universities, icon: Building2, href: "/academic/universities", accent: "primary" as const },
-    { key: "countries", label: "Countries", value: counts.countries, icon: Globe2, href: "/academic/countries", accent: "info" as const },
-    { key: "courses", label: "Courses", value: counts.courses, icon: BookOpen, href: "/academic/programs", accent: "primary" as const },
+    { key: "universities", label: "Universities", value: counts.universities, icon: Building2, href: "/website/universities", accent: "primary" as const },
+    { key: "countries", label: "Countries", value: counts.countries, icon: Globe2, href: "/website/countries", accent: "info" as const },
+    { key: "courses", label: "Courses", value: counts.courses, icon: BookOpen, href: "/website/courses", accent: "primary" as const },
   ];
 
   return (

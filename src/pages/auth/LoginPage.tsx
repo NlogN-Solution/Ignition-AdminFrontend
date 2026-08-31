@@ -42,11 +42,11 @@ export function LoginPage() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="rounded-xl border border-border bg-card p-7 shadow-sm"
+      className="rounded-[calc(var(--radius)*1.7)] bg-card p-7 shadow-[var(--shadow-3),var(--glass-sheen)] ring-1 ring-[var(--border)]"
     >
       <div className="mb-6 space-y-1">
-        <h1 className="text-lg font-semibold tracking-tight text-foreground">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">Sign in to your consultancy workspace.</p>
+        <h1 className="text-[21px] font-semibold tracking-[-0.024em] text-foreground">Welcome back</h1>
+        <p className="text-[13.5px] text-muted-foreground">Sign in to your consultancy workspace.</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
