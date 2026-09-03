@@ -68,15 +68,28 @@ const schema = z.object({
   employers: z.array(z.object({ name: z.string(), sector: z.string().optional() })),
   services: z.array(z.object({ value: z.string() })),
 
+  // `rest` is every key of the stored record this form has no input for —
+  // a ranking's scope, category, note and href; an award's detail and href.
+  // Without it, opening a university and pressing Save silently rewrites its
+  // rankings down to the four fields with boxes on screen. That was survivable
+  // while the column was empty; it is not now the catalogue import fills them.
   rankings: z.array(
     z.object({
       title: z.string(),
       position: z.string().optional(),
       source: z.string(),
       year: z.string(),
+      rest: z.record(z.string(), z.unknown()).optional(),
     }),
   ),
-  awards: z.array(z.object({ title: z.string(), organisation: z.string(), year: z.string() })),
+  awards: z.array(
+    z.object({
+      title: z.string(),
+      organisation: z.string(),
+      year: z.string(),
+      rest: z.record(z.string(), z.unknown()).optional(),
+    }),
+  ),
   milestones: z.array(z.object({ year: z.string(), label: z.string() })),
   history: z.array(z.object({ value: z.string() })),
 
@@ -141,16 +154,18 @@ function toForm(university: WebsiteUniversity): FormValues {
     placement_rate: university.employability?.placementRate ?? "",
     employers: (university.employability?.employers ?? []).map((e) => ({ name: e.name, sector: e.sector ?? "" })),
     services: toList(university.employability?.services),
-    rankings: (university.rankings ?? []).map((r) => ({
-      title: r.title,
-      position: r.position ?? "",
-      source: r.source,
-      year: String(r.year ?? ""),
+    rankings: (university.rankings ?? []).map(({ title, position, source, year, ...rest }) => ({
+      title,
+      position: position ?? "",
+      source,
+      year: String(year ?? ""),
+      rest,
     })),
-    awards: (university.awards ?? []).map((a) => ({
-      title: a.title,
-      organisation: a.organisation,
-      year: String(a.year ?? ""),
+    awards: (university.awards ?? []).map(({ title, organisation, year, ...rest }) => ({
+      title,
+      organisation,
+      year: String(year ?? ""),
+      rest,
     })),
     milestones: university.milestones ?? [],
     history: toList(university.history),
@@ -228,16 +243,24 @@ function toPayload(values: FormValues): WebsiteUniversityPayload {
     facilities: fromList(values.facilities),
     international_support: fromList(values.international_support),
     employability,
-    rankings: values.rankings.filter((r) => r.title.trim()).map((r) => ({
+    rankings: values.rankings.filter((r) => r.title.trim()).map(({ rest, ...r }) => ({
+      ...rest,
       title: r.title,
       position: r.position || undefined,
       source: r.source,
+      // A ranking genuinely requires a year — it is a measurement taken in a
+      // cycle — so an unparseable one still falls back rather than blocking a
+      // save on a field the form has always accepted as free text.
       year: Number(r.year) || new Date().getFullYear(),
     })),
-    awards: values.awards.filter((a) => a.title.trim()).map((a) => ({
+    awards: values.awards.filter((a) => a.title.trim()).map(({ rest, ...a }) => ({
+      ...rest,
       title: a.title,
       organisation: a.organisation,
-      year: Number(a.year) || new Date().getFullYear(),
+      // An award's year is optional, and blank means blank. Defaulting to the
+      // current year would stamp "2026" onto every accreditation that never
+      // had one — inventing a date the awarding body never published.
+      year: Number(a.year) || undefined,
     })),
     milestones: values.milestones.filter((m) => m.label.trim()),
     history: fromList(values.history),

@@ -86,7 +86,8 @@ export interface Ranking {
 export interface Award {
   title: string;
   organisation: string;
-  year: number;
+  /** Optional: an accreditation is a standing status, and most carry no year. */
+  year?: number;
   detail?: string;
   href?: string;
 }
