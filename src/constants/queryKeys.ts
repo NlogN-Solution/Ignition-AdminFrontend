@@ -11,6 +11,7 @@ export const queryKeys = {
   studentProfile: {
     detail: (userId: string) => ["student-profile", userId] as const,
     research: (userId: string) => ["student-profile", userId, "research"] as const,
+    shortlist: (userId: string) => ["student-profile", userId, "shortlist"] as const,
   },
   employeeProfile: {
     detail: (userId: string) => ["employee-profile", userId] as const,

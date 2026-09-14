@@ -10,6 +10,7 @@ import type {
   StudentEducationHistoryPayload,
   StudentEducationHistoryRead,
   ResearchShortlist,
+  StudentShortlist,
   StudentProfileRead,
   StudentProfileUpsertPayload,
   StudentWorkExperiencePayload,
@@ -119,6 +120,21 @@ export const userService = {
    */
   async getResearchShortlist(userId: string): Promise<ResearchShortlist> {
     const { data } = await apiClient.get<ResearchShortlist>(`/users/${userId}/research`);
+    return data;
+  },
+
+  /**
+   * What the student shortlisted inside the portal.
+   *
+   * The sibling of `getResearchShortlist`, and the one that was missing: the
+   * `student_saved_courses` and `student_saved_universities` tables have been
+   * written by the portal since it was built and read by nothing, so a student
+   * could shortlist twelve courses and their counsellor would open this page
+   * to a blank space and then ask them on a call what they had been looking
+   * at.
+   */
+  async getStudentShortlist(userId: string): Promise<StudentShortlist> {
+    const { data } = await apiClient.get<StudentShortlist>(`/users/${userId}/shortlist`);
     return data;
   },
 

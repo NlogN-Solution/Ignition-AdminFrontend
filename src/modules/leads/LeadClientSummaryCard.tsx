@@ -6,6 +6,7 @@ import { useStudentProfile } from "@/modules/users/hooks";
 import { EnablePortalDialog } from "@/modules/users/EnablePortalDialog";
 import { FullProfileSheet } from "@/modules/profile/FullProfileSheet";
 import { StudentResearchCard } from "@/modules/profile/StudentResearchCard";
+import { StudentShortlistCard } from "@/modules/profile/StudentShortlistCard";
 import type { UserRead } from "@/modules/users/types";
 import { formatCurrency } from "@/utils/format";
 
@@ -15,8 +16,14 @@ interface LeadClientSummaryCardProps {
   onFullProfileOpenChange: (open: boolean) => void;
   portalOpen: boolean;
   onPortalOpenChange: (open: boolean) => void;
-  /** Opens the page's one application dialog, optionally prefilled with a university. */
-  onStartApplication: (universityId?: string) => void;
+  /**
+   * Opens the page's one application dialog, optionally prefilled.
+   *
+   * A university alone is what the *research* shortlist can offer — the public
+   * site never records which course. The portal shortlist does, so it passes
+   * both.
+   */
+  onStartApplication: (universityId?: string, programId?: string) => void;
 }
 
 /**
@@ -89,6 +96,15 @@ export function LeadClientSummaryCard({
         studentId={user.id}
         research={profile?.preferences?.research}
         onStartApplication={(universityId) => onStartApplication(universityId)}
+      />
+
+      {/* And nothing unless they have shortlisted something in the portal.
+          Below the research card because it is the later, firmer signal:
+          research is what they were browsing before they had an account, this
+          is what they chose after. */}
+      <StudentShortlistCard
+        studentId={user.id}
+        onStartApplication={(universityId, programId) => onStartApplication(universityId, programId)}
       />
 
       <FullProfileSheet

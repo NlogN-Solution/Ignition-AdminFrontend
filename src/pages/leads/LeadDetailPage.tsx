@@ -130,6 +130,9 @@ export function LeadDetailPage() {
   const [applicationOpen, setApplicationOpen] = useQueryFlagDialog("startApplication");
   /** Set when the application dialog is opened from a shortlisted university. */
   const [applicationUniversityId, setApplicationUniversityId] = useState<string | undefined>();
+  // Set only from the portal shortlist, where the student picked the course
+  // themselves. The research shortlist leaves it undefined on purpose.
+  const [applicationProgramId, setApplicationProgramId] = useState<string | undefined>();
 
   const stage = lead ? stageOf(lead.status) : "raw";
   const clientUserId = stage === "client" ? (lead?.converted_user_id ?? undefined) : undefined;
@@ -166,8 +169,9 @@ export function LeadDetailPage() {
 
   const canStartApplication = Boolean(clientUserId) && canAccessModule(role, "applications");
 
-  function openApplication(universityId?: string) {
+  function openApplication(universityId?: string, programId?: string) {
     setApplicationUniversityId(universityId);
+    setApplicationProgramId(programId);
     setApplicationOpen(true);
   }
 
@@ -503,10 +507,14 @@ export function LeadDetailPage() {
             open={applicationOpen}
             onOpenChange={(o) => {
               setApplicationOpen(o);
-              if (!o) setApplicationUniversityId(undefined);
+              if (!o) {
+                setApplicationUniversityId(undefined);
+                setApplicationProgramId(undefined);
+              }
             }}
             defaultStudentId={clientUserId}
             defaultUniversityId={applicationUniversityId}
+            defaultProgramId={applicationProgramId}
           />
           <DocumentUploadDialog
             open={quickDialog === "document"}

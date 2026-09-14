@@ -179,6 +179,49 @@ export interface ResearchShortlist {
   unresolved: string[];
 }
 
+/**
+ * The shortlist a student built *inside the portal*, while signed in.
+ *
+ * Distinct from `ResearchShortlist` above, which is what they saved on the
+ * public site before they had an account, and the two are deliberately not
+ * merged. That one arrives as slugs in a URL fragment and may name
+ * institutions that never existed; this one is foreign keys into `programs`
+ * and `universities`, written by an authenticated student against the same
+ * catalogue this console works in. Only one of them can be trusted to name a
+ * row.
+ */
+export interface ShortlistCourse {
+  id: string;
+  slug: string | null;
+  title: string;
+  qualification: string | null;
+  course_level: string | null;
+  subject: string | null;
+  duration_years: number | null;
+  is_published: boolean;
+  university_id: string;
+  university_name: string | null;
+  university_slug: string | null;
+  university_city: string | null;
+  saved_at: string;
+}
+
+export interface ShortlistUniversity {
+  id: string;
+  slug: string | null;
+  name: string;
+  city: string | null;
+  region: string | null;
+  is_published: boolean;
+  course_count: number;
+  saved_at: string;
+}
+
+export interface StudentShortlist {
+  courses: ShortlistCourse[];
+  universities: ShortlistUniversity[];
+}
+
 export interface StudentProfilePreferences {
   research?: StudentResearch;
   intendedStudyArea?: string;

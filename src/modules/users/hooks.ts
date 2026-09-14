@@ -54,6 +54,14 @@ export function useResearchShortlist(userId: string | undefined) {
   });
 }
 
+export function useStudentShortlist(userId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.studentProfile.shortlist(userId ?? ""),
+    queryFn: () => userService.getStudentShortlist(userId as string),
+    enabled: Boolean(userId),
+  });
+}
+
 export function useUpsertStudentProfile(userId: string) {
   const queryClient = useQueryClient();
   return useMutation({

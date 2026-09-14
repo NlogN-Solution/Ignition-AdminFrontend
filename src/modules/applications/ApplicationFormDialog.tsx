@@ -16,11 +16,21 @@ interface ApplicationFormDialogProps {
   defaultStudentId?: string;
   /**
    * Opens with a university already chosen — how the research shortlist starts
-   * an application. Deliberately not a default *program*: the shortlist says
-   * which institution the student was looking at, never which course, and
-   * picking one for them would be inventing a decision they have not made.
+   * an application. The public-site shortlist says which institution the
+   * student was looking at and never which course, so on that path this is all
+   * there is and the counsellor picks the course.
    */
   defaultUniversityId?: string;
+  /**
+   * Opens with the course chosen too.
+   *
+   * Only ever passed from the **portal** shortlist, where the student saved a
+   * specific offering while signed in. That is a decision they have actually
+   * made, unlike the public shortlist, and filling it in is repeating what
+   * they said rather than inventing it. Everything stays editable, and the
+   * counsellor still presses create.
+   */
+  defaultProgramId?: string;
 }
 
 export function ApplicationFormDialog({
@@ -28,12 +38,13 @@ export function ApplicationFormDialog({
   onOpenChange,
   defaultStudentId,
   defaultUniversityId,
+  defaultProgramId,
 }: ApplicationFormDialogProps) {
   const createApplication = useCreateApplication();
   const [studentId, setStudentId] = useState<string | undefined>(defaultStudentId);
   const [counsellorId, setCounsellorId] = useState<string | undefined>();
   const [universityId, setUniversityId] = useState<string | undefined>(defaultUniversityId);
-  const [programId, setProgramId] = useState<string | undefined>();
+  const [programId, setProgramId] = useState<string | undefined>(defaultProgramId);
   const [intakeId, setIntakeId] = useState<string | undefined>();
   const [tuitionFee, setTuitionFee] = useState("");
   const [scholarship, setScholarship] = useState("");
@@ -44,13 +55,13 @@ export function ApplicationFormDialog({
       setStudentId(defaultStudentId);
       setCounsellorId(undefined);
       setUniversityId(defaultUniversityId);
-      setProgramId(undefined);
+      setProgramId(defaultProgramId);
       setIntakeId(undefined);
       setTuitionFee("");
       setScholarship("");
       setRemarks("");
     }
-  }, [open, defaultStudentId, defaultUniversityId]);
+  }, [open, defaultStudentId, defaultUniversityId, defaultProgramId]);
 
   const canSubmit = Boolean(studentId && programId);
 
