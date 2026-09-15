@@ -278,6 +278,10 @@ export const NotificationType = {
   TASK: "task",
   DOCUMENT: "document",
   LEAD: "lead",
+  // Correspondence. The backend has had this since the `notification_type_message`
+  // migration; this mirror was never updated, so the console could not name a
+  // type the API was already able to send.
+  MESSAGE: "message",
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 

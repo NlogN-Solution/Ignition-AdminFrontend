@@ -1,10 +1,10 @@
 import { Link, useNavigate } from "react-router";
 import { ArrowRight, FileCheck2, UserPlus } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentNameCell } from "@/modules/users/StudentNameCell";
+import { CourseWithUniversityCell } from "@/modules/academic/CourseWithUniversityCell";
 import { useApplications } from "@/modules/applications/hooks";
 import { formatRelativeTime } from "@/utils/format";
 import { ApplicationStatus } from "@/types/enums";
@@ -99,8 +99,13 @@ export function NewApplicationRequestsCard() {
                 <td className="py-2.5 pr-3 font-medium text-foreground">
                   <StudentNameCell userId={application.student_id} />
                 </td>
-                <td className="max-w-[220px] truncate py-2.5 pr-3 text-muted-foreground">
-                  {application.program?.name ?? "—"}
+                {/* The staff `ApplicationRead` carries `program_id` and not
+                    the programme itself — unlike the student-facing shape,
+                    which embeds a summary. This is the same cell the
+                    applications list uses, so the two read identically and
+                    share one cache entry per programme. */}
+                <td className="max-w-[240px] py-2.5 pr-3 text-muted-foreground">
+                  <CourseWithUniversityCell programId={application.program_id} />
                 </td>
                 <td className="whitespace-nowrap py-2.5 pr-3 text-muted-foreground">
                   {formatRelativeTime(application.updated_at)}

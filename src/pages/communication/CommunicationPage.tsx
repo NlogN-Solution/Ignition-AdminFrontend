@@ -45,10 +45,15 @@ export function CommunicationPage() {
   const reply = useReplyToThread(selectedId ?? "");
 
   const threads = data?.items ?? [];
+  // The id, not the array. `data?.items ?? []` is a fresh array on every
+  // render, so depending on it re-ran this effect continuously — harmless
+  // only because the body is a no-op once something is selected. Depending on
+  // the one value the effect actually reads is both correct and quiet.
+  const firstThreadId = threads[0]?.id;
 
   useEffect(() => {
-    if (!selectedId && threads.length > 0) setSelectedId(threads[0].id);
-  }, [selectedId, threads]);
+    if (!selectedId && firstThreadId) setSelectedId(firstThreadId);
+  }, [selectedId, firstThreadId]);
 
   return (
     <div>

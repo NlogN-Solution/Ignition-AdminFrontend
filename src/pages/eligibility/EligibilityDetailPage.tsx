@@ -6,7 +6,6 @@ import {
   FileText,
   Loader2,
   Mail,
-  MessageCircle,
   Phone,
   UserCog,
 } from "lucide-react";
@@ -108,7 +107,8 @@ export function EligibilityDetailPage() {
   const canManage =
     role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.COUNSELLOR;
 
-  const phoneDigits = contact.phone.replace(/[^\d]/g, "");
+  // `phoneDigits` is gone with the WhatsApp button it built a wa.me link for.
+  // `tel:` does its own stripping below.
   const readiness = assessment.document_readiness;
 
   return (

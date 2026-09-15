@@ -6,6 +6,7 @@ import type {
   ApplicationRead,
   ApplicationStatusHistoryRead,
   ApplicationUpdatePayload,
+  StatusRequirement,
 } from "./types";
 
 export const applicationService = {
