@@ -33,6 +33,7 @@ const TONE_MAP: Record<string, StatusTone> = {
   submitted: "success",
   offer_received: "success",
   offer_accepted: "success",
+  cas_received: "success",
   visa_approved: "success",
   enrolled: "success",
   completed: "success",

@@ -1,55 +1,152 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, Clock, FileText, GraduationCap, Route, Sparkles, Trash2, Wallet } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/shared/StatusBadge";
+import { useNavigate, useParams, useSearchParams } from "react-router";
+import { toast } from "sonner";
+import { FileText } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useBreadcrumbStore } from "@/hooks/useBreadcrumbStore";
 import { useAuthStore } from "@/services/authStore";
-import { isManagerRole } from "@/constants/permissions";
-import { useApplication, useApplicationStatusHistory, useChangeApplicationStatus, useDeleteApplication } from "@/modules/applications/hooks";
+import { canBrowseApplicants, isManagerRole } from "@/constants/permissions";
+import {
+  useApplication,
+  useApplicationStatusHistory,
+  useChangeApplicationStatus,
+  useRecordMilestone,
+  useStatusRequirements,
+  useDeleteApplication,
+  useUpdateApplication,
+} from "@/modules/applications/hooks";
 import { useProgram, useUniversity } from "@/modules/academic/hooks";
+import { useUser } from "@/modules/users/hooks";
 import { StudentNameCell } from "@/modules/users/StudentNameCell";
-import { useApplicationWorkflow, useStartApplicationWorkflow } from "@/modules/application-workflow/hooks";
-import { JourneyTimeline } from "@/modules/application-workflow/JourneyTimeline";
+import {
+  useApplicationWorkflow,
+  useStartApplicationWorkflow,
+  useUpdateWorkflowStep,
+} from "@/modules/application-workflow/hooks";
 import { StepDetailSheet } from "@/modules/application-workflow/StepDetailSheet";
-import { DocumentChecklistCard } from "@/modules/checklist/DocumentChecklistCard";
+import { ApplicationHeader } from "@/modules/applications/detail/ApplicationHeader";
+import { ApplicationJourney } from "@/modules/applications/detail/tabs/ApplicationJourney";
+import {
+  ApplicationSectionNav,
+  isApplicationTab,
+  type ApplicationTab,
+} from "@/modules/applications/detail/ApplicationSectionNav";
+import { AssignAdvisorDialog } from "@/modules/applications/detail/AssignAdvisorDialog";
+import { ChangeStatusDialog } from "@/modules/applications/detail/ChangeStatusDialog";
+import { EditApplicationDialog } from "@/modules/applications/detail/EditApplicationDialog";
+import { RecordMilestoneDialog } from "@/modules/applications/detail/RecordMilestoneDialog";
+import { ApplicationActivity } from "@/modules/applications/detail/tabs/ApplicationActivity";
+import { applicationReference } from "@/modules/applications/reference";
+import { ApplicationCommunication } from "@/modules/applications/detail/tabs/ApplicationCommunication";
+import { ApplicationDocuments } from "@/modules/applications/detail/tabs/ApplicationDocuments";
+import { ApplicationNotes } from "@/modules/applications/detail/tabs/ApplicationNotes";
+import { ApplicationOverview } from "@/modules/applications/detail/tabs/ApplicationOverview";
+import { ApplicationStatusHistory } from "@/modules/applications/detail/tabs/ApplicationStatusHistory";
 import { ApplicationStatus, UserRole } from "@/types/enums";
-import { formatCurrency, formatDate, formatDateTime, formatRelativeTime, toTitleCase } from "@/utils/format";
 
+/**
+ * One application, one focused workspace.
+ *
+ * ## What changed
+ *
+ * This page used to render Overview, Status History, Application Journey and
+ * the document checklist all at once, in a pair of three-column grids. Four
+ * answers before a question had been asked, and whichever one you wanted was
+ * somewhere in a long scroll.
+ *
+ * It is now a shell: header, progress strip, and exactly ONE section at a time,
+ * chosen from the application's own navigation. The sections themselves are
+ * mostly the same components as before — `JourneyTimeline`,
+ * `DocumentChecklistCard` and `StepDetailSheet` are untouched — moved into
+ * `modules/applications/detail/tabs/` and given the full width they never had.
+ *
+ * ## Data
+ *
+ * Every query and mutation is the one that was here before. Two were added, and
+ * only because the UI they serve had no way to reach them: `useUpdateApplication`
+ * (the edit dialog and advisor assignment, both of which write existing fields
+ * through `PATCH /applications/{id}`) and `useUser` for the applicant's contact
+ * details, which the Communication action needs and which no longer has to be
+ * read off the page.
+ *
+ * Queries are NOT conditional on the active tab. React Query caches them, the
+ * workflow and history feed the Overview cards as well as their own tabs, and
+ * gating them on the tab would make every tab switch a loading state for data
+ * we already hold.
+ *
+ * ## Tab state
+ *
+ * `?tab=` in the URL rather than component state: refresh keeps your place, the
+ * back button works between sections, and a counsellor can paste a colleague a
+ * link straight to the documents. `replace` on navigation so six tab clicks do
+ * not leave six entries to back through — but the first one pushes, so back
+ * from a tab returns to the list.
+ */
 export function ApplicationDetailPage() {
   const { applicationId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const role = useAuthStore((s) => s.user?.role);
   const setLabel = useBreadcrumbStore((s) => s.setLabel);
+
+  const tabParam = searchParams.get("tab");
+  const tab: ApplicationTab = isApplicationTab(tabParam) ? tabParam : "overview";
 
   const { data: application, isLoading } = useApplication(applicationId);
   const { data: history, isLoading: historyLoading } = useApplicationStatusHistory(applicationId);
   const { data: program } = useProgram(application?.program_id);
   const { data: university } = useUniversity(program?.university_id);
-  const changeStatus = useChangeApplicationStatus(applicationId ?? "");
-  const deleteApplication = useDeleteApplication();
   const { data: workflow, isLoading: workflowLoading } = useApplicationWorkflow(applicationId);
+
+  // Contact details for the Communication action. Gated on the same permission
+  // the rest of the console uses to resolve a student — roles that cannot read
+  // a user record get disabled channels rather than a failed request.
+  const { data: student } = useUser(canBrowseApplicants(role) ? application?.student_id : undefined);
+
+  const changeStatus = useChangeApplicationStatus(applicationId ?? "");
+  const recordMilestone = useRecordMilestone(applicationId ?? "");
+  // The server's config. Which statuses need evidence is its answer, not a
+  // list repeated here — see `services/status_requirements.py`.
+  const { data: statusRequirements } = useStatusRequirements();
+  const milestoneStatuses = (statusRequirements ?? []).map((item) => item.status);
+  const milestoneRequirement = (statusRequirements ?? []).find(
+    (item) => item.status === milestoneStatus,
+  );
+  const updateApplication = useUpdateApplication(applicationId ?? "");
+  const deleteApplication = useDeleteApplication();
   const startWorkflow = useStartApplicationWorkflow(applicationId ?? "");
+  const updateStep = useUpdateWorkflowStep(applicationId ?? "");
+
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  const selectedStep = workflow?.steps.find((s) => s.id === selectedStepId) ?? null;
+  const [editOpen, setEditOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  // Which milestone is being recorded, if any. Null closes the dialog.
+  const [milestoneStatus, setMilestoneStatus] = useState<ApplicationStatus | null>(null);
 
   useEffect(() => {
     if (program) setLabel(program.name);
   }, [program, setLabel]);
 
+  function goToTab(next: ApplicationTab) {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", next);
+    // Replace only once we are already on a tab, so the first move away from
+    // Overview stays in history and "back" returns to the applications list.
+    setSearchParams(params, { replace: Boolean(tabParam) });
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-64" />
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-10 w-96" />
+        <Skeleton className="h-20 w-full rounded-2xl" />
+        <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
       </div>
     );
   }
@@ -58,163 +155,119 @@ export function ApplicationDetailPage() {
     return <EmptyState icon={FileText} title="Application not found" description="It may have been deleted." />;
   }
 
-  const canManage = isManagerRole(role) || role === "counsellor";
+  const canManage = isManagerRole(role) || role === UserRole.COUNSELLOR;
+  const canDelete = isManagerRole(role);
   const isStudent = role === UserRole.STUDENT;
+  /**
+   * `GET /applications/{id}/status-history` orders ASCENDING — oldest first
+   * (`application_service.list_status_history`) — and the Status History tab
+   * wants the newest first. Reversing a COPY: `history` is React Query's cached
+   * array and reversing it in place would corrupt the cache.
+   */
+  const recentHistory = history ? [...history].reverse() : undefined;
+  const selectedStep = workflow?.steps.find((s) => s.id === selectedStepId) ?? null;
+
+  const applicationRef = applicationReference(application);
 
   return (
-    <div>
-      <Button variant="ghost" size="sm" className="mb-3 -ml-2 gap-1.5 text-muted-foreground" onClick={() => navigate("/applications")}>
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to applications
-      </Button>
+    <div className="mx-auto max-w-[1560px]">
+      <ApplicationHeader
+        programName={program?.name ?? "Application"}
+        universityName={university?.name ?? null}
+        applicantName={<StudentNameCell userId={application.student_id} />}
+        applicantInitials={
+          student ? `${student.first_name?.[0] ?? ""}${student.last_name?.[0] ?? ""}`.toUpperCase() || null : null
+        }
+        applicantAvatarUrl={student?.avatar_url ?? null}
+        applicationRef={applicationRef}
+        status={application.status}
+        updatedAt={application.updated_at}
+        canManage={canManage}
+        canDelete={canDelete}
+        onBack={() => navigate("/applications")}
+        onEdit={() => setEditOpen(true)}
+        onChangeStatus={() => setStatusOpen(true)}
+        onAssignAdvisor={() => setAssignOpen(true)}
+        onCopyRef={() => {
+          navigator.clipboard?.writeText(applicationRef).then(
+            () => toast.success("Application ID copied"),
+            () => toast.error("Couldn't copy to the clipboard"),
+          );
+        }}
+        onDelete={() => {
+          if (confirm("Delete this application permanently? This cannot be undone.")) {
+            deleteApplication.mutate(application.id, { onSuccess: () => navigate("/applications") });
+          }
+        }}
+      />
 
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-[19px] font-semibold tracking-tight text-foreground">{program?.name ?? "Application"}</h1>
-            <StatusBadge status={application.status} />
-          </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {university?.name ?? "…"} • Created {formatDateTime(application.created_at)}
-          </p>
+      {/* Sections and content. Two tracks from `lg`, stacked below it — the
+          journey went back to being a tab, so nothing competes for the width
+          and the content column is as wide as the page allows. */}
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-6">
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <ApplicationSectionNav value={tab} onChange={goToTab} />
         </div>
 
-        {canManage && (
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Change status
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {Object.values(ApplicationStatus).map((s) => (
-                  <DropdownMenuItem key={s} disabled={s === application.status} onSelect={() => changeStatus.mutate({ status: s })}>
-                    {toTitleCase(s)}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {isManagerRole(role) && (
-              <Button
-                variant="outline"
-                size="icon"
-                className="text-danger hover:text-danger"
-                onClick={() => {
-                  if (confirm("Delete this application permanently?")) {
-                    deleteApplication.mutate(application.id, { onSuccess: () => navigate("/applications") });
-                  }
-                }}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-3 text-[13px] font-semibold text-foreground">Overview</h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <InfoRow icon={GraduationCap} label="Applicant" value={<StudentNameCell userId={application.student_id} />} />
-              <InfoRow icon={Wallet} label="Tuition fee" value={application.tuition_fee ? formatCurrency(application.tuition_fee) : "—"} />
-              <InfoRow
-                icon={Wallet}
-                label="Scholarship"
-                value={application.scholarship_amount ? formatCurrency(application.scholarship_amount) : "—"}
-              />
-              <InfoRow icon={Clock} label="Application date" value={formatDate(application.application_date)} />
-              <InfoRow icon={Clock} label="Submission date" value={formatDate(application.submission_date)} />
-              <InfoRow icon={Clock} label="Offer received" value={formatDate(application.offer_received_date)} />
-              <InfoRow icon={Clock} label="Visa applied" value={formatDate(application.visa_applied_date)} />
-              <InfoRow icon={Clock} label="Visa decision" value={formatDate(application.visa_decision_date)} />
-            </div>
-            {application.remarks && (
-              <div className="mt-4 border-t border-border pt-3">
-                <p className="text-xs font-medium text-muted-foreground">Notes</p>
-                <p className="mt-1 text-sm text-foreground">{application.remarks}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 text-[13px] font-semibold text-foreground">Status history</h2>
-          {historyLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : !history || history.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No status changes recorded yet.</p>
-          ) : (
-            <ol className="space-y-4">
-              {history.map((entry, idx) => (
-                <li key={entry.id} className="relative flex gap-3">
-                  <div className="flex flex-col items-center">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Clock className="h-2.5 w-2.5" />
-                    </span>
-                    {idx < history.length - 1 && <span className="mt-1 w-px flex-1 bg-border" />}
-                  </div>
-                  <div className="min-w-0 flex-1 pb-1">
-                    <p className="text-[13px] font-medium text-foreground">
-                      {entry.old_status ? `${toTitleCase(entry.old_status)} → ` : ""}
-                      {toTitleCase(entry.new_status)}
-                    </p>
-                    {entry.remarks && <p className="text-xs text-muted-foreground">{entry.remarks}</p>}
-                    <p className="mt-0.5 text-[11px] text-muted-foreground/70">{formatRelativeTime(entry.created_at)}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4 lg:col-span-2">
-          <div className="mb-1 flex items-center justify-between">
-            <h2 className="text-[13px] font-semibold text-foreground">Application journey</h2>
-            {workflow && (
-              <span className="text-xs text-muted-foreground">
-                {workflow.steps.filter((s) => s.status === "completed").length}/{workflow.steps.length} steps complete
-              </span>
-            )}
-          </div>
-
-          {workflowLoading ? (
-            <div className="space-y-3 py-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : !workflow ? (
-            <EmptyState
-              icon={Route}
-              title="No journey started yet"
-              description={
-                isStudent
-                  ? "Your counsellor hasn't started the application journey yet — check back soon."
-                  : "Starting a journey picks the right template automatically based on the destination country, and seeds the document checklist."
-              }
-              action={
-                isStudent ? undefined : (
-                  <Button size="sm" disabled={startWorkflow.isPending} onClick={() => startWorkflow.mutate(undefined)}>
-                    <Sparkles className="h-3.5 w-3.5" /> Start journey
-                  </Button>
-                )
-              }
-              className="border-none py-10"
+        {/* Exactly one section. The others are not rendered at all. */}
+        <div className="min-w-0">
+          {tab === "overview" && (
+            <ApplicationOverview
+              application={application}
+              programName={program?.name ?? null}
+              universityName={university?.name ?? null}
+              canManage={canManage}
+              onEdit={() => setEditOpen(true)}
+              onAssignAdvisor={() => setAssignOpen(true)}
+              onRecordOffer={() => setMilestoneStatus(ApplicationStatus.OFFER_RECEIVED)}
+              onRecordCas={() => setMilestoneStatus(ApplicationStatus.CAS_RECEIVED)}
             />
-          ) : (
-            <JourneyTimeline steps={workflow.steps} onSelectStep={(step) => setSelectedStepId(step.id)} />
+          )}
+
+          {tab === "documents" && (
+            <ApplicationDocuments applicationId={application.id} studentId={application.student_id} />
+          )}
+
+          {tab === "status" && <ApplicationStatusHistory history={recentHistory} isLoading={historyLoading} />}
+
+          {tab === "notes" && (
+            <ApplicationNotes
+              remarks={application.remarks}
+              workflow={workflow}
+              canManage={canManage}
+              isSaving={updateApplication.isPending}
+              onSave={(remarks) => updateApplication.mutate({ remarks })}
+            />
+          )}
+
+          {tab === "activity" && <ApplicationActivity applicationId={application.id} role={role} />}
+
+          {tab === "journey" && (
+            <ApplicationJourney
+              workflow={workflow}
+              isLoading={workflowLoading}
+              status={application.status}
+              canManage={canManage && !isStudent}
+              isStarting={startWorkflow.isPending}
+              isUpdating={updateStep.isPending}
+              onStart={() => startWorkflow.mutate(undefined)}
+              onSelectStep={(step) => setSelectedStepId(step.id)}
+              onSetStepStatus={(stepId, status) => updateStep.mutate({ stepId, payload: { status } })}
+            />
+          )}
+
+          {tab === "communication" && (
+            <ApplicationCommunication
+              applicationId={application.id}
+              studentId={application.student_id}
+              phone={student?.phone}
+              email={student?.email}
+              programName={program?.name ?? "this application"}
+              studentName={<StudentNameCell userId={application.student_id} />}
+              isLoading={!student && canBrowseApplicants(role)}
+            />
           )}
         </div>
-
-        <DocumentChecklistCard applicationId={application.id} studentId={application.student_id} />
       </div>
 
       <StepDetailSheet
@@ -224,18 +277,65 @@ export function ApplicationDetailPage() {
         onOpenChange={(open) => !open && setSelectedStepId(null)}
         readOnly={isStudent}
       />
+
+      <EditApplicationDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        application={application}
+        isSaving={updateApplication.isPending}
+        onSave={(payload) => updateApplication.mutate(payload, { onSuccess: () => setEditOpen(false) })}
+      />
+
+      {/* Recording an offer is a milestone, not a date edit.
+
+          `RecordOfferDialog` used to live here and saved only
+          `offer_received_date` through the generic update endpoint — the letter
+          was a separate upload with nothing tying it to the transition. It is
+          gone; `RecordMilestoneDialog` does the whole thing in one request,
+          and it renders itself from the server's requirements config so the
+          form and the validator cannot drift. */}
+      {milestoneStatus && milestoneRequirement && (
+        <RecordMilestoneDialog
+          open
+          onOpenChange={(next) => !next && setMilestoneStatus(null)}
+          status={milestoneStatus}
+          requirement={milestoneRequirement}
+          application={application}
+          isSaving={recordMilestone.isPending}
+          onSubmit={(payload) =>
+            recordMilestone.mutate(payload, { onSuccess: () => setMilestoneStatus(null) })
+          }
+        />
+      )}
+
+      <ChangeStatusDialog
+        open={statusOpen}
+        onOpenChange={setStatusOpen}
+        current={application.status}
+        isSaving={changeStatus.isPending}
+        milestoneStatuses={milestoneStatuses}
+        onSubmit={(status, remarks) =>
+          changeStatus.mutate({ status, remarks }, { onSuccess: () => setStatusOpen(false) })
+        }
+        onMilestone={(status) => {
+          // Picked a status that needs evidence. Close this dialog and open
+          // the one that can collect it, rather than sending a half-recorded
+          // transition the backend would refuse anyway.
+          setStatusOpen(false);
+          setMilestoneStatus(status);
+        }}
+      />
+
+      <AssignAdvisorDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        currentId={application.counsellor_id}
+        isSaving={updateApplication.isPending}
+        onAssign={(userId) =>
+          updateApplication.mutate({ counsellor_id: userId }, { onSuccess: () => setAssignOpen(false) })
+        }
+      />
     </div>
   );
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-2.5">
-      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      <div>
-        <p className="text-[11px] text-muted-foreground">{label}</p>
-        <div className="text-foreground">{value}</div>
-      </div>
-    </div>
-  );
-}

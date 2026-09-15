@@ -145,11 +145,13 @@ export function EligibilityDetailPage() {
               <Phone className="h-3.5 w-3.5" /> Call
             </a>
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-            </a>
-          </Button>
+          {/* The WhatsApp button that was here is gone. An enquiry answered on
+              WhatsApp leaves no record the application can search, show the
+              student, or keep after the counsellor moves on — and this is a
+              page about somebody who has not got an account yet, so the thread
+              store (which handles exactly that: threads against a lead) is
+              where the conversation belongs. Call and email remain because
+              both are how this page is actually worked. */}
           {contact.email ? (
             <Button variant="outline" size="sm" asChild>
               <a href={`mailto:${contact.email}`}>

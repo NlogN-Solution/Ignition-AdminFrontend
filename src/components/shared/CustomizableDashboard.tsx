@@ -23,6 +23,16 @@ export interface DashboardWidget {
   render: ReactNode;
   span?: "third" | "half" | "full";
   defaultHidden?: boolean;
+  /**
+   * Sits at the top of the dashboard and stays there.
+   *
+   * Stronger than pinning, which is the reader's own choice and can be undone
+   * by dragging something above it. This is for the one widget whose whole
+   * value is being seen before anything else — a student who registered an hour
+   * ago and has not been contacted. A saved layout, a pin on another widget and
+   * a drag all lose to it.
+   */
+  alwaysFirst?: boolean;
 }
 
 const SPAN_CLASSES: Record<NonNullable<DashboardWidget["span"]>, string> = {
@@ -46,7 +56,11 @@ function SortableWidget({
   onToggleHidden: () => void;
   onTogglePinned: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widget.id, disabled: !editing });
+  const locked = Boolean(widget.alwaysFirst);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: widget.id,
+    disabled: !editing || locked,
+  });
 
   if (hidden && !editing) return null;
 
@@ -58,18 +72,27 @@ function SortableWidget({
     >
       {editing && (
         <div className="mb-1.5 flex items-center gap-1 rounded-lg border border-dashed border-border bg-muted/40 px-2 py-1">
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            className="cursor-grab touch-none text-muted-foreground/60 hover:text-muted-foreground active:cursor-grabbing"
-          >
-            <GripVertical className="h-3.5 w-3.5" />
-          </button>
-          <span className="flex-1 truncate text-xs font-medium text-muted-foreground">{widget.title}</span>
-          <button type="button" onClick={onTogglePinned} className="text-muted-foreground/60 hover:text-foreground">
-            {pinned ? <Pin className="h-3.5 w-3.5 fill-current" /> : <PinOff className="h-3.5 w-3.5" />}
-          </button>
+          {locked ? (
+            <Pin className="h-3.5 w-3.5 text-muted-foreground/60" />
+          ) : (
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="cursor-grab touch-none text-muted-foreground/60 hover:text-muted-foreground active:cursor-grabbing"
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <span className="flex-1 truncate text-xs font-medium text-muted-foreground">
+            {widget.title}
+            {locked && <span className="ml-1.5 text-muted-foreground/60">· always first</span>}
+          </span>
+          {!locked && (
+            <button type="button" onClick={onTogglePinned} className="text-muted-foreground/60 hover:text-foreground">
+              {pinned ? <Pin className="h-3.5 w-3.5 fill-current" /> : <PinOff className="h-3.5 w-3.5" />}
+            </button>
+          )}
           <button type="button" onClick={onToggleHidden} className="text-muted-foreground/60 hover:text-foreground">
             {hidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
           </button>
@@ -92,11 +115,29 @@ export function CustomizableDashboard({ widgets, storageKey }: { widgets: Dashbo
 
   const widgetMap = useMemo(() => new Map(widgets.map((w) => [w.id, w])), [widgets]);
 
+  /**
+   * The saved order, with widgets the user has never seen slotted in.
+   *
+   * Ids the saved layout no longer knows about are dropped, and new ones are
+   * inserted at their DEFAULT index rather than appended. Appending was the old
+   * behaviour and it quietly buried every new widget: anyone who had ever
+   * reordered their dashboard — which is everyone, since saving happens on first
+   * drag — got it last, under the task board, however deliberately it had been
+   * placed at the top for new users.
+   */
   const order = useMemo(() => {
     const stored = layout?.order ?? [];
     const known = stored.filter((id) => widgetMap.has(id));
-    const missing = defaultOrder.filter((id) => !known.includes(id));
-    return [...known, ...missing];
+    if (known.length === 0) return defaultOrder;
+
+    const next = [...known];
+    defaultOrder.forEach((id, defaultIndex) => {
+      if (next.includes(id)) return;
+      // Clamped: a widget placed 8th in a default list of 13 should not land
+      // past the end of a saved list the user has trimmed to 6.
+      next.splice(Math.min(defaultIndex, next.length), 0, id);
+    });
+    return next;
   }, [layout, defaultOrder, widgetMap]);
 
   const hidden = useMemo(() => {
@@ -108,10 +149,13 @@ export function CustomizableDashboard({ widgets, storageKey }: { widgets: Dashbo
   const pinned = new Set(layout?.pinned ?? []);
 
   const orderedIds = useMemo(() => {
-    const pinnedIds = order.filter((id) => pinned.has(id));
-    const restIds = order.filter((id) => !pinned.has(id));
-    return [...pinnedIds, ...restIds];
-  }, [order, pinned]);
+    // Three tiers: always-first, then the reader's pins, then everything else.
+    const alwaysFirst = order.filter((id) => widgetMap.get(id)?.alwaysFirst);
+    const rest = order.filter((id) => !widgetMap.get(id)?.alwaysFirst);
+    const pinnedIds = rest.filter((id) => pinned.has(id));
+    const restIds = rest.filter((id) => !pinned.has(id));
+    return [...alwaysFirst, ...pinnedIds, ...restIds];
+  }, [order, pinned, widgetMap]);
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 

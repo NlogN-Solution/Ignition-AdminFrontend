@@ -113,8 +113,8 @@ export const router = createBrowserRouter([
           // former target, anything a counsellor saved) land on the Clients tab
           // rather than a 404. The :userId form drops the id: it named a student
           // account, and the lead page is keyed by lead.
-          { path: "/applicants", element: <Navigate to="/leads?tab=client" replace /> },
-          { path: "/applicants/:userId", element: <Navigate to="/leads?tab=client" replace /> },
+          { path: "/applicants", element: <Navigate to="/leads?stage=converted" replace /> },
+          { path: "/applicants/:userId", element: <Navigate to="/leads?stage=converted" replace /> },
           { path: "/applications", element: withModule("applications", <ApplicationsPage />) },
           { path: "/applications/:applicationId", element: withModule("applications", <ApplicationDetailPage />) },
           { path: "/appointments", element: withModule("appointments", <AppointmentsPage />) },

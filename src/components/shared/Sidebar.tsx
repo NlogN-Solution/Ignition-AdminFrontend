@@ -1,14 +1,35 @@
 import { NavLink, useLocation } from "react-router";
 import { motion } from "motion/react";
-import { ChevronsLeft, ChevronsRight, Pin, Zap } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Lock, Pin } from "lucide-react";
 import { NAV_GROUPS, ALL_NAV_ITEMS } from "@/constants/navigation";
-import { canAccessModule } from "@/constants/permissions";
+import { canAccessModule, isComingSoon } from "@/constants/permissions";
 import { useAuthStore } from "@/services/authStore";
 import { useUIStore } from "@/hooks/useUIStore";
+import ignitionMark from "@/assets/ignition-mark.png";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-function SidebarLink({ path, label, icon: Icon, collapsed }: { path: string; label: string; icon: React.ElementType; collapsed: boolean }) {
+function SidebarLink({
+  path,
+  label,
+  icon: Icon,
+  collapsed,
+  comingSoon = false,
+}: {
+  path: string;
+  label: string;
+  icon: React.ElementType;
+  collapsed: boolean;
+  /**
+   * Under development. Still navigable — the route renders an honest
+   * "being built" page (`RequireModule`) — but marked, so nobody sets off
+   * expecting to get work done there.
+   *
+   * Not `disabled`: a dead link that does nothing on click reads as a broken
+   * app. Leading somewhere that explains itself is kinder and shorter.
+   */
+  comingSoon?: boolean;
+}) {
   const location = useLocation();
   const isActive = path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
   const togglePinned = useUIStore((s) => s.togglePinned);
@@ -20,6 +41,8 @@ function SidebarLink({ path, label, icon: Icon, collapsed }: { path: string; lab
       className={cn(
         "group relative flex items-center gap-2.5 rounded-[10px] px-2.5 py-[7px] text-[13px] transition-colors duration-200",
         isActive ? "font-medium text-foreground" : "font-normal text-muted-foreground hover:text-foreground",
+        // Dimmed, not hidden: the entry is there to show what is coming.
+        comingSoon && !isActive && "text-muted-foreground/60",
       )}
     >
       {isActive && (
@@ -34,7 +57,13 @@ function SidebarLink({ path, label, icon: Icon, collapsed }: { path: string; lab
         strokeWidth={isActive ? 2.1 : 1.9}
       />
       {!collapsed && <span className="relative z-10 truncate">{label}</span>}
-      {!collapsed && (
+      {!collapsed && comingSoon && (
+        <Lock
+          className="relative z-10 ml-auto h-3 w-3 shrink-0 text-muted-foreground/60"
+          aria-label="Under development"
+        />
+      )}
+      {!collapsed && !comingSoon && (
         <button
           type="button"
           onClick={(e) => {
@@ -80,9 +109,7 @@ export function Sidebar() {
       )}
     >
       <div className={cn("flex h-16 items-center gap-2.5 px-4", collapsed && "justify-center px-0")}>
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] bg-primary text-primary-foreground shadow-[var(--shadow-1),var(--glass-sheen)]">
-          <Zap className="h-3.5 w-3.5" strokeWidth={2.4} />
-        </div>
+        <img src={ignitionMark} alt="" aria-hidden className="h-7 w-7 shrink-0 object-contain" />
         {!collapsed && <span className="truncate text-[14px] font-semibold tracking-[-0.02em]">Ignition</span>}
       </div>
 
@@ -92,7 +119,7 @@ export function Sidebar() {
             {!collapsed && <p className="label-micro px-2.5 pb-2 text-muted-foreground/60">Pinned</p>}
             <div className="space-y-0.5">
               {pinnedItems.map((item) => (
-                <SidebarLink key={item.path} {...item} collapsed={collapsed} />
+                <SidebarLink key={item.path} {...item} collapsed={collapsed} comingSoon={isComingSoon(item.module)} />
               ))}
             </div>
           </div>
@@ -108,7 +135,7 @@ export function Sidebar() {
               {!collapsed && <p className="label-micro px-2.5 pb-2 text-muted-foreground/60">{group.label}</p>}
               <div className="space-y-0.5">
                 {items.map((item) => (
-                  <SidebarLink key={item.path} {...item} collapsed={collapsed} />
+                  <SidebarLink key={item.path} {...item} collapsed={collapsed} comingSoon={isComingSoon(item.module)} />
                 ))}
               </div>
             </div>

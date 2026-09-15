@@ -2,7 +2,8 @@ import { useNavigate } from "react-router";
 import { useQueries } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { leadService } from "@/modules/leads/service";
-import { LEAD_STATUS_LABELS, LEAD_STATUS_PIPELINE } from "@/modules/leads/types";
+import { LEAD_STATUS_PIPELINE } from "@/modules/leads/types";
+import { STATUS_LABELS } from "@/modules/leads/lifecycle";
 import { toneForStatus } from "@/utils/statusTone";
 
 const BAR_COLOR: Record<string, string> = {
@@ -14,9 +15,9 @@ const BAR_COLOR: Record<string, string> = {
 };
 
 function destinationFor(status: string): string {
-  if (status === "converted") return "/leads?tab=client";
-  if (status === "qualified") return "/leads?tab=prospect";
-  return "/leads?tab=raw";
+  if (status === "converted") return "/leads?stage=converted";
+  if (status === "qualified") return "/leads?stage=qualified";
+  return "/leads?stage=new,contacted,follow_up";
 }
 
 export function LeadFunnelWidget() {
@@ -35,7 +36,7 @@ export function LeadFunnelWidget() {
   return (
     <section className="rounded-xl border border-border bg-card p-4">
       <h2 className="mb-0.5 text-[13px] font-semibold text-foreground">Conversion funnel</h2>
-      <p className="mb-4 text-xs text-muted-foreground">Raw lead → Prospect → Client</p>
+      <p className="mb-4 text-xs text-muted-foreground">How far along everyone is, right now</p>
       <div className="space-y-3">
         {LEAD_STATUS_PIPELINE.map((status, idx) => {
           const count = counts[idx];
@@ -46,7 +47,7 @@ export function LeadFunnelWidget() {
               onClick={() => navigate(destinationFor(status))}
               className="group flex w-full items-center gap-3 text-left"
             >
-              <span className="w-24 shrink-0 text-xs text-muted-foreground group-hover:text-foreground">{LEAD_STATUS_LABELS[status]}</span>
+              <span className="w-28 shrink-0 text-xs text-muted-foreground group-hover:text-foreground">{STATUS_LABELS[status]}</span>
               <div className="h-6 flex-1 overflow-hidden rounded-md bg-muted">
                 <motion.div
                   initial={{ width: 0 }}

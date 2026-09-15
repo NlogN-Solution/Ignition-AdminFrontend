@@ -59,7 +59,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Admissions",
     items: [
       { label: "Leads", path: "/leads", icon: UserPlus, module: "leads" },
-      { label: "Eligibility", path: "/eligibility", icon: ClipboardCheck, module: "eligibility" },
       { label: "Applications", path: "/applications", icon: FileText, module: "applications" },
       { label: "Appointments", path: "/appointments", icon: CalendarDays, module: "appointments" },
     ],
@@ -75,6 +74,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Website",
     items: [
+      { label: "Eligibility", path: "/eligibility", icon: ClipboardCheck, module: "eligibility" },
       { label: "Universities", path: "/website/universities", icon: Building2, module: "website" },
       { label: "Courses", path: "/website/courses", icon: BookOpen, module: "website" },
       { label: "Countries", path: "/website/countries", icon: Globe2, module: "academic" },

@@ -18,10 +18,25 @@ interface DocumentUploadDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultStudentId?: string;
   defaultDocumentType?: DocumentType;
+  /**
+   * File it against this application too, not only against the student.
+   *
+   * Without it an offer letter lands in the student's document vault with
+   * nothing tying it to the offer it came with, and the student's portal has no
+   * way to show it on the application they are looking at.
+   */
+  applicationId?: string;
   onUploaded?: (document: DocumentRead) => void;
 }
 
-export function DocumentUploadDialog({ open, onOpenChange, defaultStudentId, defaultDocumentType, onUploaded }: DocumentUploadDialogProps) {
+export function DocumentUploadDialog({
+  open,
+  onOpenChange,
+  defaultStudentId,
+  defaultDocumentType,
+  applicationId,
+  onUploaded,
+}: DocumentUploadDialogProps) {
   const upload = useUploadDocument();
   const inputRef = useRef<HTMLInputElement>(null);
   const currentUser = useAuthStore((s) => s.user);
@@ -49,7 +64,14 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultStudentId, def
   function handleSubmit() {
     if (!studentId || !file) return;
     upload.mutate(
-      { student_id: studentId, document_type: docType as DocumentType, file, title: title || undefined, remarks: remarks || undefined },
+      {
+        student_id: studentId,
+        document_type: docType as DocumentType,
+        file,
+        title: title || undefined,
+        remarks: remarks || undefined,
+        application_id: applicationId,
+      },
       {
         onSuccess: (document) => {
           onOpenChange(false);
@@ -121,6 +143,13 @@ export function DocumentUploadDialog({ open, onOpenChange, defaultStudentId, def
               <Label>Applicant</Label>
               <UserPicker value={studentId} onChange={setStudentId} role={UserRole.STUDENT} placeholder="Select applicant…" disabled={Boolean(defaultStudentId)} />
             </div>
+          )}
+
+          {!isStudent && (
+            <p className="rounded-lg bg-muted/60 px-3 py-2 text-[12.5px] leading-relaxed text-muted-foreground">
+              Filing this for the applicant records it as verified by you — they see it as ready to open rather
+              than as something still awaiting review.
+            </p>
           )}
 
           <div className="grid grid-cols-2 gap-3">

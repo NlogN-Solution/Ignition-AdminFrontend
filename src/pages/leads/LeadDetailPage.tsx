@@ -65,11 +65,14 @@ import { ConvertLeadDialog } from "@/modules/leads/ConvertLeadDialog";
 import { LeadFormDialog } from "@/modules/leads/LeadFormDialog";
 import { LostLeadDialog } from "@/modules/leads/LostLeadDialog";
 import { LeadFollowUpTimeline } from "@/modules/leads/LeadFollowUpTimeline";
-import { LeadStageBadge } from "@/modules/leads/LeadStageBadge";
+import { LifecycleRail } from "@/components/shared/LifecycleRail";
+import { LIFECYCLE_STEPS, STEP_LABELS, lifecycleOf } from "@/modules/leads/lifecycle";
 import { LeadClientSummaryCard } from "@/modules/leads/LeadClientSummaryCard";
 import { LeadApplicationsTab } from "@/modules/leads/LeadApplicationsTab";
+import { ThreadPanel } from "@/modules/communication/ThreadPanel";
+import { useLeadThreads } from "@/modules/communication/hooks";
 import { PriorityBadge } from "@/modules/leads/PriorityBadge";
-import { stageOf, STAGE_LABELS, type LeadStage } from "@/modules/leads/types";
+import { stageOf, type LeadStage } from "@/modules/leads/types";
 import { ApplicationFormDialog } from "@/modules/applications/ApplicationFormDialog";
 import { DocumentUploadDialog } from "@/modules/documents/DocumentUploadDialog";
 import { PaymentFormDialog } from "@/modules/payments/PaymentFormDialog";
@@ -82,24 +85,32 @@ import { formatDate, formatDateTime, formatRelativeTime, toTitleCase } from "@/u
  * applications and a client is past scheduling qualification calls — so the page
  * never grows a row of tabs that are empty for the person in front of you.
  */
+// Communication is on *every* stage, which is the point rather than an
+// oversight: the whole reason threads resolve by person is that a conversation
+// does not restart when somebody's stage label changes. A tab that appeared at
+// conversion would be telling the counsellor the history began there.
 const TABS_BY_STAGE: Record<LeadStage, { value: string; label: string }[]> = {
   raw: [
     { value: "overview", label: "Overview" },
+    { value: "communication", label: "Communication" },
     { value: "follow-ups", label: "Follow-ups" },
     { value: "activity", label: "Activity" },
   ],
   prospect: [
     { value: "overview", label: "Overview" },
+    { value: "communication", label: "Communication" },
     { value: "follow-ups", label: "Follow-ups" },
     { value: "activity", label: "Activity" },
   ],
   client: [
     { value: "overview", label: "Overview" },
+    { value: "communication", label: "Communication" },
     { value: "applications", label: "Applications" },
     { value: "activity", label: "Activity" },
   ],
   lost: [
     { value: "overview", label: "Overview" },
+    { value: "communication", label: "Communication" },
     { value: "activity", label: "Activity" },
   ],
 };
@@ -168,6 +179,7 @@ export function LeadDetailPage() {
   const activeTab = tabs.some((t) => t.value === tab) ? tab : "overview";
 
   const canStartApplication = Boolean(clientUserId) && canAccessModule(role, "applications");
+  const leadCycle = lifecycleOf(lead);
 
   function openApplication(universityId?: string, programId?: string) {
     setApplicationUniversityId(universityId);
@@ -184,10 +196,9 @@ export function LeadDetailPage() {
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-[19px] font-semibold tracking-tight text-foreground">
+            <h1 className="text-[22px] font-semibold tracking-[-0.015em] text-foreground">
               {lead.first_name} {lead.last_name ?? ""}
             </h1>
-            <LeadStageBadge status={lead.status} />
             {stage !== "client" && <PriorityBadge priority={lead.priority} />}
             {clientUser?.has_portal_access && (
               <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
@@ -195,9 +206,18 @@ export function LeadDetailPage() {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {STAGE_LABELS[stage]} • Created {formatDateTime(lead.created_at)}
-          </p>
+
+          {/* The same rail the list draws, so the record reads as the row you
+              clicked rather than as a different vocabulary for the same person.
+              `enrolled` is real here: this page already loads the applications. */}
+          <LifecycleRail
+            className="mt-3 max-w-[420px]"
+            steps={LIFECYCLE_STEPS.map((s) => STEP_LABELS[s])}
+            index={leadCycle.index}
+            ended={leadCycle.lost}
+            caption={leadCycle.statusLabel}
+            note={`Captured ${formatDateTime(lead.created_at)}`}
+          />
         </div>
 
         {canManage && (
@@ -458,6 +478,13 @@ export function LeadDetailPage() {
           </TabsContent>
         )}
 
+        <TabsContent value="communication" className="mt-4">
+          {/* Keyed by the *lead*, which resolves to the same threads the
+              student page shows once they have converted — the backend joins
+              through `leads.converted_user_id`. One store, two doors. */}
+          <LeadCommunicationTab leadId={lead.id} studentId={clientUserId} />
+        </TabsContent>
+
         <TabsContent value="activity" className="mt-4">
           <ActivityTab leadId={lead.id} />
         </TabsContent>
@@ -572,6 +599,32 @@ function NotesCard({ leadId, initialNotes }: { leadId: string; initialNotes: str
  * The activity query lives here rather than on the page, so opening a lead costs one
  * request instead of two — Radix unmounts inactive tabs, so it only runs when read.
  */
+/**
+ * The lead's correspondence.
+ *
+ * `studentId` is passed so a *new* thread opened after conversion is written
+ * against the account rather than only the lead — the person has one now, and
+ * writing it against the lead would slowly re-create the split this feature
+ * removed. Reading is unaffected either way: `threads_for_lead` returns both.
+ */
+function LeadCommunicationTab({
+  leadId,
+  studentId,
+}: {
+  leadId: string;
+  studentId: string | undefined;
+}) {
+  const { data: threads, isLoading } = useLeadThreads(leadId);
+  return (
+    <ThreadPanel
+      threads={threads}
+      isLoading={isLoading}
+      target={studentId ? { studentId, leadId } : { leadId }}
+      emptyDescription="Nothing yet. Open a thread and it stays with this person for the whole journey — through conversion, into their portal, and onto every application."
+    />
+  );
+}
+
 function ActivityTab({ leadId }: { leadId: string }) {
   const { data: activities, isLoading } = useLeadActivities(leadId);
 

@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { GreetingHeader } from "@/modules/dashboard/GreetingHeader";
+import { NewRegistrationsCard } from "@/modules/dashboard/NewRegistrationsCard";
+import { NewApplicationRequestsCard } from "@/modules/dashboard/NewApplicationRequestsCard";
 import { AnalyticsGrid } from "@/modules/dashboard/AnalyticsGrid";
 import { ActivityFeed } from "@/modules/dashboard/ActivityFeed";
 import { TodaySchedule } from "@/modules/dashboard/TodaySchedule";
@@ -54,6 +56,7 @@ export function DashboardPage() {
       return {
         storageKey: "marketing",
         widgets: [
+          { id: "registrations", title: "New registrations", render: <NewRegistrationsCard />, span: "full", alwaysFirst: true },
           { id: "analytics", title: "Overview", render: <AnalyticsGrid />, span: "full" },
           { id: "lead-funnel", title: "Lead funnel", render: <LeadFunnelWidget />, span: "third" },
           { id: "lead-source", title: "Lead source", render: <LeadSourceChart />, span: "third" },
@@ -67,6 +70,10 @@ export function DashboardPage() {
       return {
         storageKey: "counsellor",
         widgets: [
+          { id: "registrations", title: "New registrations", render: <NewRegistrationsCard />, span: "full", alwaysFirst: true },
+          // Needs attention, before anything that merely reports. See the note
+          // on the component.
+          { id: "new-applications", title: "New application requests", render: <NewApplicationRequestsCard />, span: "full" },
           { id: "analytics", title: "Overview", render: <AnalyticsGrid />, span: "full" },
           { id: "schedule", title: "Today's schedule", render: <TodaySchedule />, span: "third" },
           { id: "lead-funnel", title: "Lead funnel", render: <LeadFunnelWidget />, span: "third" },
@@ -80,6 +87,11 @@ export function DashboardPage() {
 
     // Super Admin, Admin, Manager, Support, Admissions — the full operational dashboard.
     const full: DashboardWidget[] = [
+      { id: "registrations", title: "New registrations", render: <NewRegistrationsCard />, span: "full", alwaysFirst: true },
+      // Urgency before reporting: an application a student has handed over and
+      // nobody has opened is the only thing on this page where the delay is
+      // ours and invisible.
+      { id: "new-applications", title: "New application requests", render: <NewApplicationRequestsCard />, span: "full" },
       { id: "analytics", title: "Overview", render: <AnalyticsGrid />, span: "full" },
       { id: "activity", title: "Activity feed", render: <ActivityFeed />, span: "half" },
       { id: "schedule", title: "Today's schedule", render: <TodaySchedule />, span: "third" },
@@ -94,7 +106,7 @@ export function DashboardPage() {
       { id: "quick-actions", title: "Quick actions", render: <QuickActions />, span: "full" },
     ];
     if (isManagerRole(role)) {
-      full.splice(7, 0, { id: "leaderboard", title: "Counsellor leaderboard", render: <CounsellorLeaderboard />, span: "third" });
+      full.splice(8, 0, { id: "leaderboard", title: "Counsellor leaderboard", render: <CounsellorLeaderboard />, span: "third" });
     }
     return { storageKey: "admin", widgets: full };
   }, [role]);

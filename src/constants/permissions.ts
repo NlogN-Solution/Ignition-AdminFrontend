@@ -166,3 +166,56 @@ export function canManageTarget(actingRole: UserRole | undefined, targetRole: Us
   }
   return true;
 }
+
+/**
+ * Modules that exist in the navigation but are not finished.
+ *
+ * ## Why they stay visible
+ *
+ * Removing them would hide the shape of the product from the people who use
+ * it — a counsellor who cannot see that Reports is coming assumes it is never
+ * coming, and an admin who cannot see Payroll assumes they have the wrong
+ * account. So the entries remain, labelled, and lead to a page that says
+ * plainly that the module is being built.
+ *
+ * ## Why this is not only a sidebar concern
+ *
+ * `RequireModule` reads this too. A greyed-out link is a suggestion; typing
+ * the URL is not blocked by a suggestion, and a half-built page reached that
+ * way is worse than one that was never linked — it looks broken rather than
+ * unbuilt, and on a few of these it would show real data through controls that
+ * do not finish what they start.
+ *
+ * ## What is *not* here
+ *
+ * Attendance, Leave and Payroll have working backends
+ * (`/attendance-records`, `/leave-requests`, `/payroll-runs`) and real pages.
+ * They are listed anyway because the brief names them as under development and
+ * the product is not ready to have staff act on them — but the note matters:
+ * unlocking one is deleting a line from this set, not building a feature.
+ *
+ * Communication is deliberately absent. It was on this list until Phase 5
+ * replaced it; it is now the primary channel and fully built.
+ */
+export const COMING_SOON_MODULES = new Set<ModuleKey>([
+  "integrations",
+  "rolesPermissions",
+  "workflow",
+  "invoicesExpenses",
+  "reports",
+  "automation",
+  "marketing",
+  "payroll",
+  "leave",
+  "attendance",
+  // Already ComingSoonPage bodies before this change; listed so the sidebar
+  // marks them too rather than implying they work.
+  "responsibilities",
+  "contacts",
+  "resources",
+  "aiAssistant",
+]);
+
+export function isComingSoon(module: ModuleKey): boolean {
+  return COMING_SOON_MODULES.has(module);
+}

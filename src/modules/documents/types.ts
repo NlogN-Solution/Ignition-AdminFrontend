@@ -37,6 +37,23 @@ export interface DocumentUploadPayload {
   file: File;
   title?: string;
   remarks?: string;
+  /** Attach the file to this application as well as to the student. Without it
+   *  an offer letter is filed against the student and nothing ties it to the
+   *  application it belongs to — which is why the student portal could not show
+   *  an offer letter on the offer it came with. */
+  application_id?: string;
+}
+
+/**
+ * A signed URL the browser can actually open.
+ *
+ * Signed, not expiring — treat it as a credential and hand it straight to the
+ * browser rather than storing it. See the backend's `build_download_url`.
+ */
+export interface DocumentLink {
+  url: string;
+  file_name: string;
+  mime_type: string | null;
 }
 
 export interface DocumentUpdatePayload {

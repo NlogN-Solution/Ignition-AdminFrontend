@@ -12,6 +12,9 @@ export interface ApplicationRead {
   visa_applied_date: string | null;
   visa_decision_date: string | null;
   enrollment_date: string | null;
+  cas_received_date: string | null;
+  cas_number: string | null;
+  offer_type: "conditional" | "unconditional" | "other" | null;
   tuition_fee: number | null;
   scholarship_amount: number | null;
   university_application_id: string | null;
@@ -70,3 +73,22 @@ export const APPLICATION_STATUS_PIPELINE: ApplicationStatus[] = [
   "visa_processing",
   "enrolled",
 ] as ApplicationStatus[];
+
+
+/**
+ * What a milestone status needs, as served by
+ * `GET /applications/status-requirements`.
+ *
+ * Mirrors `app/services/status_requirements.py`. Deliberately a fetched shape
+ * rather than a hardcoded union: the whole point of the config living on the
+ * backend is that one place decides what recording an offer requires.
+ */
+export interface StatusRequirement {
+  status: string;
+  prompt: string;
+  required_date_field: string | null;
+  required_document: string | null;
+  document_label: string;
+  optional_fields: string[];
+  milestone: string | null;
+}

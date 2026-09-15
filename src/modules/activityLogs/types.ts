@@ -34,4 +34,6 @@ export interface ActivityLogListParams {
   user_id?: string;
   activity_type?: ActivityType;
   entity_type?: string;
+  /** Scope to a single record — the audit trail on a detail page. */
+  entity_id?: string;
 }

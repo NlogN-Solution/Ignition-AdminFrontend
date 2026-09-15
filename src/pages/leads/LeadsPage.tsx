@@ -1,19 +1,18 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
-import { useNavigate } from "react-router";
+import { useSearchParams, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Bookmark, Download, FilePlus2, LayoutGrid, List, Plus, Trash2, UserCog, UserPlus, X } from "lucide-react";
+import { Bookmark, Download, Plus, Trash2, UserCog, UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ListToolbar } from "@/components/shared/ListToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { LifecycleRail } from "@/components/shared/LifecycleRail";
 import { UserPicker } from "@/components/shared/UserPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -27,43 +26,72 @@ import { useQueryFlagDialog } from "@/hooks/useQueryFlagDialog";
 import { useLeads } from "@/modules/leads/hooks";
 import { leadService } from "@/modules/leads/service";
 import { LeadFormDialog } from "@/modules/leads/LeadFormDialog";
-import { LeadPipelineBoard } from "@/modules/leads/LeadPipelineBoard";
 import { PriorityBadge } from "@/modules/leads/PriorityBadge";
-import { LeadStageBadge } from "@/modules/leads/LeadStageBadge";
 import { useSavedLeadFilters } from "@/modules/leads/useSavedLeadFilters";
 import { StaffNameCell } from "@/modules/users/StaffNameCell";
-import type { LeadLifecycleTab, LeadRead } from "@/modules/leads/types";
-import { LeadPriority, LeadSource, LostReason } from "@/types/enums";
+import { LIFECYCLE_STEPS, STEP_LABELS, lifecycleOf } from "@/modules/leads/lifecycle";
+import type { LeadRead } from "@/modules/leads/types";
+import { LeadPriority, LeadSource, LeadStatus, LostReason } from "@/types/enums";
 import { toTitleCase, formatDate } from "@/utils/format";
 import { exportToCsv } from "@/utils/csv";
 import { queryKeys } from "@/constants/queryKeys";
-import { cn } from "@/lib/utils";
 
-const TAB_LABELS: Record<LeadLifecycleTab, string> = {
-  raw: "Raw leads",
-  prospect: "Prospects",
-  client: "Clients",
-  lost: "Lost",
-};
+/**
+ * Leads — one list, one row per person, the whole journey on the row.
+ *
+ * ## What this replaces
+ *
+ * Four tabs (Raw / Prospects / Clients / Lost), each with its own column set and
+ * its own idea of what mattered. That arrangement had three concrete problems:
+ *
+ *   1. **It hid the thing you came for.** Priority and source were shown while
+ *      someone was a raw lead and dropped the moment they qualified; the
+ *      conversion date existed only under Clients. So no single view ever showed
+ *      a person's history, and answering "how did this client reach us" meant
+ *      opening the record.
+ *   2. **The newest business was in the last tab anyone looked at.** A student
+ *      who registers on the portal is created as a *converted* lead by
+ *      `link_or_create_lead_for_student` — so self-signups landed straight in
+ *      Clients, and the Raw tab, the one staff live in, never showed them.
+ *   3. **It made one person four records.** Moving someone forward made them
+ *      vanish from the tab you were working in and reappear somewhere else.
+ *
+ * Now: every lead in one table, sorted by most recently touched, with a
+ * `LifecycleRail` on each row showing how far along they are. Stage is a filter,
+ * not a tab — narrowing the list instead of switching to a different list.
+ *
+ * ## On "lost"
+ *
+ * Lost is no longer a tab, a board column or a headline stat, because it is not
+ * a stage anyone works — it is the journey ending. It is still recordable and
+ * still visible: a lost lead renders with a red tail and its reason inline, and
+ * the stage filter can isolate them when someone genuinely wants that list.
+ * Removing the ability to record it would have thrown away a real business fact,
+ * so nothing about the backend's `lost` status changed.
+ *
+ * ## Density
+ *
+ * `density="spacious"` and a two-line name cell. This is a list people read
+ * rather than scan — the row is the unit of work — so it gets 15px type and a
+ * 56px row instead of the console's default 13px.
+ */
 
-const TAB_STATUS: Record<LeadLifecycleTab, string | undefined> = {
-  raw: undefined,
-  prospect: "qualified",
-  client: "converted",
-  lost: "lost",
-};
-
-function tabFromParam(value: string | null): LeadLifecycleTab {
-  return value === "prospect" || value === "client" || value === "lost" ? value : "raw";
-}
+/** Stage filter options. One list; these narrow it rather than switching it. */
+const STAGE_FILTERS = [
+  { value: "all", label: "All stages" },
+  { value: "new,contacted,follow_up", label: "Still working" },
+  { value: LeadStatus.NEW, label: "New enquiries" },
+  { value: LeadStatus.QUALIFIED, label: "Qualified" },
+  { value: LeadStatus.CONVERTED, label: "Clients" },
+  { value: LeadStatus.LOST, label: "Closed — lost" },
+] as const;
 
 export function LeadsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [tab, setTab] = useState<LeadLifecycleTab>(() => tabFromParam(searchParams.get("tab")));
-  const [view, setView] = useState<"table" | "board">("table");
+  const [stage, setStage] = useState<string>(() => searchParams.get("stage") ?? "all");
   const [search, setSearch] = useState("");
   const [priority, setPriority] = useState<string>(searchParams.get("priority") ?? "all");
   const [source, setSource] = useState<string>("all");
@@ -78,17 +106,19 @@ export function LeadsPage() {
   const saveFilter = useSavedLeadFilters((s) => s.save);
   const removeFilter = useSavedLeadFilters((s) => s.remove);
 
+  // `statuses` (plural) takes a comma list, `status` a single value — the API
+  // has both, and "Still working" is the only filter that needs the former.
   const params = useMemo(
     () => ({
       page,
       limit: 20,
       search: debouncedSearch || undefined,
-      statuses: tab === "raw" ? "new,contacted,follow_up" : undefined,
-      status: TAB_STATUS[tab] as LeadRead["status"] | undefined,
+      statuses: stage.includes(",") ? stage : undefined,
+      status: stage !== "all" && !stage.includes(",") ? (stage as LeadRead["status"]) : undefined,
       priority: priority === "all" ? undefined : (priority as LeadPriority),
       source: source === "all" ? undefined : (source as LeadSource),
     }),
-    [page, debouncedSearch, tab, priority, source],
+    [page, debouncedSearch, stage, priority, source],
   );
 
   const { data, isLoading } = useLeads(params);
@@ -135,339 +165,293 @@ export function LeadsPage() {
     await invalidateAfterBulk();
   }
 
+  /** One export shape for the whole lifecycle, so a CSV is not tab-dependent either. */
+  function rowsToCsv(rows: LeadRead[]) {
+    return rows.map((l) => ({
+      name: `${l.first_name} ${l.last_name ?? ""}`.trim(),
+      phone: l.phone,
+      email: l.email ?? "",
+      stage: STEP_LABELS[lifecycleOf(l).step],
+      status: l.status,
+      priority: l.priority,
+      source: l.source,
+      country: l.interested_country ?? "",
+      course: l.interested_course ?? "",
+      captured: l.created_at,
+      qualified: l.qualified_at ?? "",
+      converted: l.converted_at ?? "",
+      lost_reason: l.lost_reason ?? "",
+    }));
+  }
+
   function bulkExport() {
-    const rows = (data?.items ?? []).filter((l) => rowSelection[l.id]);
-    exportToCsv(
-      "leads",
-      rows.map((l) => ({
-        name: `${l.first_name} ${l.last_name ?? ""}`,
-        phone: l.phone,
-        email: l.email ?? "",
-        status: l.status,
-        priority: l.priority,
-        source: l.source,
-        created_at: l.created_at,
-      })),
-    );
+    exportToCsv("leads", rowsToCsv((data?.items ?? []).filter((l) => rowSelection[l.id])));
   }
 
   function applySavedFilter(id: string) {
     const filter = savedFilters.find((f) => f.id === id);
     if (!filter) return;
-    if (filter.status === "qualified") setTab("prospect");
-    else if (filter.status === "converted") setTab("client");
-    else if (filter.status === "lost") setTab("lost");
-    else setTab("raw");
+    setStage(filter.status ?? "all");
     setPriority(filter.priority ?? "all");
     setSource(filter.source ?? "all");
+    setPage(1);
   }
 
-  // Columns follow the stage: priority and source are how you triage a raw lead and
-  // noise once someone is a client, where what matters is when they converted and who
-  // owns them. One memo per tab rather than one table trying to serve all four.
-  const columns = useMemo<ColumnDef<LeadRead, any>[]>(() => {
-    const name: ColumnDef<LeadRead, any> = {
-      accessorKey: "first_name",
-      header: "Name",
-      cell: ({ row }) => (
-        <div>
-          <p className="font-medium text-foreground">
-            {row.original.first_name} {row.original.last_name ?? ""}
-          </p>
-          <p className="text-xs text-muted-foreground">{row.original.phone}</p>
-        </div>
-      ),
-    };
-    const priorityCol: ColumnDef<LeadRead, any> = {
-      accessorKey: "priority",
-      header: "Priority",
-      cell: ({ getValue }) => <PriorityBadge priority={getValue()} />,
-    };
-    const sourceCol: ColumnDef<LeadRead, any> = {
-      accessorKey: "source",
-      header: "Source",
-      cell: ({ getValue }) => <span className="text-muted-foreground">{toTitleCase(getValue<string>())}</span>,
-    };
-    const destination: ColumnDef<LeadRead, any> = {
-      accessorKey: "interested_country",
-      header: "Destination",
-      cell: ({ getValue }) => getValue<string>() || "—",
-    };
-    const date = (key: keyof LeadRead, header: string): ColumnDef<LeadRead, any> => ({
-      accessorKey: key,
-      header,
-      cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{getValue<string>() ? formatDate(getValue<string>()) : "—"}</span>
-      ),
-    });
-
-    if (tab === "prospect") {
-      return [name, priorityCol, sourceCol, destination, date("qualified_at", "Qualified")];
-    }
-
-    if (tab === "client") {
-      return [
-        name,
-        destination,
-        date("converted_at", "Converted"),
-        {
-          accessorKey: "conversion_source",
-          header: "How",
-          cell: ({ getValue }) => (
-            <span className="text-muted-foreground">{getValue<string>() ? toTitleCase(getValue<string>()) : "—"}</span>
-          ),
-        },
-        {
-          accessorKey: "assigned_to",
-          header: "Owner",
-          cell: ({ getValue }) => <StaffNameCell userId={getValue<string | null>()} />,
-        },
-        {
-          id: "actions",
-          header: "",
-          cell: ({ row }) => (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              disabled={!row.original.converted_user_id}
-              title={row.original.converted_user_id ? undefined : "This client has no student account yet"}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/leads/${row.original.id}?startApplication=1`);
-              }}
-            >
-              <FilePlus2 className="h-3.5 w-3.5" /> Start application
-            </Button>
-          ),
-        },
-      ];
-    }
-
-    if (tab === "lost") {
-      return [
-        name,
-        sourceCol,
-        {
-          accessorKey: "lost_reason",
-          header: "Reason",
-          cell: ({ getValue }) => (
-            <span className="text-muted-foreground">{getValue<string>() ? toTitleCase(getValue<string>()) : "—"}</span>
-          ),
-        },
-        date("lost_at", "Lost"),
-      ];
-    }
-
-    return [
-      name,
-      priorityCol,
+  /**
+   * One column set for every lead, whatever stage they are at.
+   *
+   * Nothing is conditional on status any more. A client keeps the source that
+   * brought them in and the priority they were worked at, because that is the
+   * history the old tabs threw away — and the Lifecycle column carries where
+   * they are, which is the one thing the tabs were really encoding.
+   */
+  const columns = useMemo<ColumnDef<LeadRead, any>[]>(
+    () => [
       {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ getValue }) => <LeadStageBadge status={getValue()} />,
+        id: "person",
+        accessorKey: "first_name",
+        header: "Person",
+        size: 260,
+        cell: ({ row }) => {
+          const lead = row.original;
+          const name = `${lead.first_name} ${lead.last_name ?? ""}`.trim();
+          return (
+            <div className="min-w-0">
+              <p className="truncate text-[16px] font-semibold tracking-[-0.01em] text-foreground">{name}</p>
+              <p className="truncate text-[13px] text-muted-foreground">
+                {lead.phone}
+                {lead.email ? ` · ${lead.email}` : ""}
+              </p>
+            </div>
+          );
+        },
       },
-      sourceCol,
-      destination,
-      date("next_follow_up_at", "Next follow-up"),
-    ];
-  }, [tab, navigate]);
+      {
+        id: "lifecycle",
+        accessorKey: "status",
+        header: "Lifecycle",
+        size: 230,
+        cell: ({ row }) => {
+          const cycle = lifecycleOf(row.original);
+          return (
+            <LifecycleRail
+              steps={LIFECYCLE_STEPS.map((s) => STEP_LABELS[s])}
+              index={cycle.index}
+              ended={cycle.lost}
+              caption={cycle.statusLabel}
+              note={cycle.lost && cycle.lostReason ? toTitleCase(cycle.lostReason) : null}
+            />
+          );
+        },
+      },
+      {
+        accessorKey: "source",
+        header: "Source",
+        size: 130,
+        cell: ({ getValue }) => <span className="font-medium text-foreground">{toTitleCase(getValue<string>())}</span>,
+      },
+      {
+        accessorKey: "priority",
+        header: "Priority",
+        size: 110,
+        cell: ({ getValue }) => <PriorityBadge priority={getValue()} />,
+      },
+      {
+        id: "interest",
+        accessorKey: "interested_country",
+        header: "Interest",
+        size: 180,
+        cell: ({ row }) => {
+          const { interested_country: country, interested_course: course } = row.original;
+          if (!country && !course) return <span className="text-muted-foreground">—</span>;
+          return (
+            <div className="min-w-0">
+              <p className="truncate font-medium text-foreground">{country ?? "—"}</p>
+              {course && <p className="truncate text-[13px] text-muted-foreground">{course}</p>}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "assigned_to",
+        header: "Owner",
+        size: 150,
+        cell: ({ getValue }) => <StaffNameCell userId={getValue<string | null>()} />,
+      },
+      {
+        // The one date that means the same thing at every stage: when did this
+        // record last move. The old tabs each showed a different date column,
+        // so two rows side by side were never comparable.
+        accessorKey: "updated_at",
+        header: "Last activity",
+        size: 140,
+        cell: ({ row }) => {
+          const lead = row.original;
+          const due = lead.next_follow_up_at;
+          return (
+            <div className="min-w-0">
+              <p className="truncate text-muted-foreground">{formatDate(lead.updated_at)}</p>
+              {due && lead.status !== "lost" && (
+                <p className="truncate text-[13px] font-medium text-warning">Follow up {formatDate(due)}</p>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    [],
+  );
 
   return (
     <div>
       <PageHeader
         title="Leads"
-        description="Every stage in one place — raw lead, prospect, client, lost."
+        description="Everyone who has reached us, on one row each — from first enquiry through to enrolment."
         actions={
-          <>
-            <div className="flex items-center rounded-lg border border-border p-0.5">
-              <button
-                type="button"
-                onClick={() => setView("table")}
-                className={cn("rounded-md p-1.5", view === "table" ? "bg-accent text-accent-foreground" : "text-muted-foreground")}
-              >
-                <List className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("board")}
-                className={cn("rounded-md p-1.5", view === "board" ? "bg-accent text-accent-foreground" : "text-muted-foreground")}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <Button size="sm" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              Add lead
-            </Button>
-          </>
+          <Button size="sm" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Add lead
+          </Button>
         }
       />
 
-      {view === "table" && (
-      <Tabs value={tab} onValueChange={(v) => { setTab(v as LeadLifecycleTab); setPage(1); clearSelection(); }} className="mb-3">
-        <TabsList>
-          {(Object.keys(TAB_LABELS) as LeadLifecycleTab[]).map((t) => (
-            <TabsTrigger key={t} value={t}>
-              {TAB_LABELS[t]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-      )}
-
-      {view === "table" && (
-        <div className="mb-3 space-y-2">
-          <ListToolbar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search by name, phone, or email…"
-            selectedCount={selectedIds.length}
-            onClearSelection={clearSelection}
-            bulkActions={
-              /* A client is a person with an application in flight; marking them lost or
-                 re-prioritising them in bulk is not a thing anyone does. */
-              <>
-                {(tab === "raw" || tab === "prospect") && (
-                  <>
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("assign")}>
-                      <UserCog className="h-3.5 w-3.5" /> Assign
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("priority")}>
-                      Priority
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("lost")}>
-                      Mark lost
-                    </Button>
-                  </>
-                )}
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={bulkExport}>
-                  <Download className="h-3.5 w-3.5" /> Export
-                </Button>
-                {tab !== "client" && (
-                  <Button variant="outline" size="sm" className="h-7 text-xs text-danger hover:text-danger" onClick={bulkDelete}>
-                    <Trash2 className="h-3.5 w-3.5" /> Delete
-                  </Button>
-                )}
-              </>
-            }
-            filters={
-              <>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger size="sm" className="h-8 w-[130px] text-xs">
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All priorities</SelectItem>
-                    {Object.values(LeadPriority).map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {toTitleCase(p)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={source} onValueChange={setSource}>
-                  <SelectTrigger size="sm" className="h-8 w-[140px] text-xs">
-                    <SelectValue placeholder="Source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All sources</SelectItem>
-                    {Object.values(LeadSource).map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {toTitleCase(s)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                      <Bookmark className="h-3.5 w-3.5" /> Saved
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
-                    {savedFilters.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No saved filters yet</p>}
-                    {savedFilters.map((f) => (
-                      <DropdownMenuItem key={f.id} className="flex items-center justify-between" onSelect={() => applySavedFilter(f.id)}>
-                        {f.name}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeFilter(f.id);
-                          }}
-                        >
-                          <X className="h-3 w-3 text-muted-foreground hover:text-danger" />
-                        </button>
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuItem onSelect={() => setSaveFilterOpen(true)}>
-                      <Plus className="h-3.5 w-3.5" /> Save current filter
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            }
-            onExport={
-              data?.items.length
-                ? () =>
-                    exportToCsv(
-                      "leads",
-                      data.items.map((l) => ({
-                        name: `${l.first_name} ${l.last_name ?? ""}`,
-                        phone: l.phone,
-                        email: l.email ?? "",
-                        status: l.status,
-                        priority: l.priority,
-                        source: l.source,
-                        country: l.interested_country ?? "",
-                        created_at: l.created_at,
-                      })),
-                    )
-                : undefined
-            }
-          />
-        </div>
-      )}
-
-      {view === "table" ? (
-        <DataTable
-          columns={columns}
-          data={data?.items ?? []}
-          isLoading={isLoading}
-          getRowId={(row) => row.id}
-          onRowClick={(row) => navigate(`/leads/${row.id}`)}
-          selectable
-          rowSelection={rowSelection}
-          onRowSelectionChange={setRowSelection}
-          page={page}
-          limit={20}
-          total={data?.total}
-          onPageChange={setPage}
-          emptyState={
-            <EmptyState
-              icon={UserPlus}
-              title={`No ${TAB_LABELS[tab].toLowerCase()}`}
-              description={
-                tab === "client"
-                  ? "Convert a prospect and they appear here — with their applications alongside them."
-                  : "Leads you capture from your website, walk-ins, or campaigns will show up here."
-              }
-              action={
-                <Button size="sm" onClick={() => setDialogOpen(true)}>
-                  <Plus className="h-3.5 w-3.5" /> Add lead
-                </Button>
-              }
-              className="border-none py-20"
-            />
+      <div className="mb-3 space-y-2">
+        <ListToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by name, phone, or email…"
+          selectedCount={selectedIds.length}
+          onClearSelection={clearSelection}
+          bulkActions={
+            <>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("assign")}>
+                <UserCog className="h-3.5 w-3.5" /> Assign
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("priority")}>
+                Priority
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setBulkAction("lost")}>
+                Mark lost
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={bulkExport}>
+                <Download className="h-3.5 w-3.5" /> Export
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs text-danger hover:text-danger" onClick={bulkDelete}>
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </Button>
+            </>
           }
+          filters={
+            <>
+              <Select
+                value={stage}
+                onValueChange={(v) => {
+                  setStage(v);
+                  setPage(1);
+                  clearSelection();
+                }}
+              >
+                <SelectTrigger size="sm" className="h-8 w-[150px] text-xs">
+                  <SelectValue placeholder="Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STAGE_FILTERS.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger size="sm" className="h-8 w-[130px] text-xs">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All priorities</SelectItem>
+                  {Object.values(LeadPriority).map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {toTitleCase(p)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={source} onValueChange={setSource}>
+                <SelectTrigger size="sm" className="h-8 w-[140px] text-xs">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sources</SelectItem>
+                  {Object.values(LeadSource).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {toTitleCase(s)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                    <Bookmark className="h-3.5 w-3.5" /> Saved
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {savedFilters.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No saved filters yet</p>}
+                  {savedFilters.map((f) => (
+                    <DropdownMenuItem key={f.id} className="flex items-center justify-between" onSelect={() => applySavedFilter(f.id)}>
+                      {f.name}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFilter(f.id);
+                        }}
+                      >
+                        <X className="h-3 w-3 text-muted-foreground hover:text-danger" />
+                      </button>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem onSelect={() => setSaveFilterOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" /> Save current filter
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+          onExport={data?.items.length ? () => exportToCsv("leads", rowsToCsv(data.items)) : undefined}
         />
-      ) : (
-        <LeadPipelineBoard
-          search={debouncedSearch}
-          priority={priority === "all" ? undefined : (priority as LeadPriority)}
-          source={source === "all" ? undefined : (source as LeadSource)}
-        />
-      )}
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={data?.items ?? []}
+        isLoading={isLoading}
+        density="spacious"
+        getRowId={(row) => row.id}
+        onRowClick={(row) => navigate(`/leads/${row.id}`)}
+        selectable
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
+        page={page}
+        limit={20}
+        total={data?.total}
+        onPageChange={setPage}
+        emptyState={
+          <EmptyState
+            icon={UserPlus}
+            title={stage === "all" ? "No leads yet" : "Nothing at this stage"}
+            description={
+              stage === "all"
+                ? "Enquiries from your website, walk-ins and campaigns land here — and so does anyone who registers on the student portal."
+                : "Try a different stage, or clear the filter to see everyone."
+            }
+            action={
+              <Button size="sm" onClick={() => setDialogOpen(true)}>
+                <Plus className="h-3.5 w-3.5" /> Add lead
+              </Button>
+            }
+            className="border-none py-20"
+          />
+        }
+      />
 
       <LeadFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
@@ -506,7 +490,12 @@ export function LeadsPage() {
         open={saveFilterOpen}
         onOpenChange={setSaveFilterOpen}
         onSave={(name) => {
-          saveFilter({ name, status: TAB_STATUS[tab], priority: priority === "all" ? undefined : priority, source: source === "all" ? undefined : source });
+          saveFilter({
+            name,
+            status: stage === "all" ? undefined : stage,
+            priority: priority === "all" ? undefined : priority,
+            source: source === "all" ? undefined : source,
+          });
           setSaveFilterOpen(false);
         }}
       />

@@ -1,8 +1,9 @@
-import { apiClient, API_BASE_URL } from "@/services/apiClient";
+import { apiClient } from "@/services/apiClient";
 import type { ListResponse } from "@/types/api";
 import type {
   DocumentExtractionResult,
   DocumentFolder,
+  DocumentLink,
   DocumentFolderListParams,
   DocumentListParams,
   DocumentRead,
@@ -38,6 +39,7 @@ export const documentService = {
     form.append("file", payload.file);
     if (payload.title) form.append("title", payload.title);
     if (payload.remarks) form.append("remarks", payload.remarks);
+    if (payload.application_id) form.append("application_id", payload.application_id);
 
     const { data } = await apiClient.post<DocumentRead>("/documents/upload", form, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -75,7 +77,23 @@ export const documentService = {
     return data;
   },
 
-  fileUrl(document: DocumentRead): string {
-    return document.file_url.startsWith("http") ? document.file_url : `${API_BASE_URL}${document.file_url}`;
+  /**
+   * A URL the browser can open for this document's file.
+   *
+   * There used to be a `fileUrl()` here that returned
+   * `${API_BASE_URL}${document.file_url}`, and it was broken twice over.
+   * `file_url` is already an absolute API path (`/api/v1/documents/…`) and
+   * `API_BASE_URL` already ends in `/api/v1`, so the result was
+   * `…/api/v1/api/v1/documents/…` — a 404. And even spelled correctly it would
+   * have failed: that route is authenticated, and a `window.open` carries no
+   * bearer token. So View and Download were both dead, in every documents list
+   * in the console.
+   *
+   * This asks the backend over the authenticated client — where the token
+   * is — for a signed, short-lived URL, and that is what gets opened.
+   */
+  async link(id: string, disposition: "inline" | "attachment" = "inline"): Promise<DocumentLink> {
+    const { data } = await apiClient.get<DocumentLink>(`/documents/${id}/link`, { params: { disposition } });
+    return data;
   },
 };

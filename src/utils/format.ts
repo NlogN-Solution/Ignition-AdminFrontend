@@ -61,10 +61,32 @@ export function initials(firstName?: string | null, lastName?: string | null): s
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "?";
 }
 
+/**
+ * Words that are acronyms, not words.
+ *
+ * `toTitleCase` capitalises the first letter of each underscore-separated part,
+ * which is right for `offer_received` and wrong for `cas_received` — that
+ * rendered as "Cas Received" in every StatusBadge on the console. CAS is
+ * Confirmation of Acceptance for Studies; writing it as a word makes the UI
+ * look like it does not know what it is displaying.
+ *
+ * Keyed lowercase, matched per part, so it applies wherever the token appears.
+ */
+const ACRONYMS: Record<string, string> = {
+  cas: "CAS",
+  ukvi: "UKVI",
+  id: "ID",
+  gpa: "GPA",
+  cgpa: "CGPA",
+  uk: "UK",
+  usa: "USA",
+  sop: "SOP",
+};
+
 export function toTitleCase(value: string): string {
   return value
     .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => ACRONYMS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
 

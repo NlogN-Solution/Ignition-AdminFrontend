@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/services/authStore";
 import { useCommentDocument, useDeleteDocument, useRejectDocument, useVerifyDocument } from "./hooks";
-import { documentService } from "./service";
+import { openDocumentFile } from "./openDocument";
 import type { DocumentRead } from "./types";
 import { DocumentStatus, UserRole } from "@/types/enums";
 
@@ -94,14 +94,6 @@ export function DocumentRowActions({
   const verify = useVerifyDocument(doc.id);
   const remove = useDeleteDocument();
 
-  function handleDownload() {
-    const url = documentService.fileUrl(doc);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = doc.original_file_name;
-    link.click();
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -110,10 +102,10 @@ export function DocumentRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onSelect={() => window.open(documentService.fileUrl(doc), "_blank")}>
+        <DropdownMenuItem onSelect={() => void openDocumentFile(doc.id, "inline")}>
           <Eye className="h-3.5 w-3.5" /> View
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={handleDownload}>
+        <DropdownMenuItem onSelect={() => void openDocumentFile(doc.id, "attachment")}>
           <Download className="h-3.5 w-3.5" /> Download
         </DropdownMenuItem>
         {canReviewDocuments(role) && (

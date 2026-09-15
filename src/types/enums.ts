@@ -137,6 +137,9 @@ export const DocumentType = {
   STATEMENT_OF_PURPOSE: "statement_of_purpose",
   RECOMMENDATION_LETTER: "recommendation_letter",
   OFFER_LETTER: "offer_letter",
+  /** Confirmation of Acceptance for Studies — the letter `cas_received` is
+   *  named after, and the one a UK Student visa cannot be applied for without. */
+  CAS_LETTER: "cas_letter",
   VISA: "visa",
   FINANCIAL_DOCUMENT: "financial_document",
   MEDICAL_REPORT: "medical_report",
@@ -181,6 +184,7 @@ export const ApplicationStatus = {
   OFFER_RECEIVED: "offer_received",
   OFFER_ACCEPTED: "offer_accepted",
   OFFER_DECLINED: "offer_declined",
+  CAS_RECEIVED: "cas_received",
   VISA_PROCESSING: "visa_processing",
   VISA_APPROVED: "visa_approved",
   VISA_REJECTED: "visa_rejected",

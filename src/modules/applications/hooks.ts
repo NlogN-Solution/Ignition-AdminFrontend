@@ -73,6 +73,41 @@ export function useChangeApplicationStatus(id: string) {
   });
 }
 
+/**
+ * The milestone requirements, fetched once and cached hard.
+ *
+ * It is configuration, not data: it changes when the backend changes, never
+ * during a session. `staleTime: Infinity` keeps the status dialog from
+ * refetching it every time it opens.
+ */
+export function useStatusRequirements() {
+  return useQuery({
+    queryKey: ["applications", "status-requirements"],
+    queryFn: () => applicationService.statusRequirements(),
+    staleTime: Infinity,
+  });
+}
+
+export function useRecordMilestone(id: string) {
+  const invalidate = useInvalidateApplications();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof applicationService.recordMilestone>[1]) =>
+      applicationService.recordMilestone(id, payload),
+    onSuccess: () => {
+      invalidate(id);
+      // The milestone writes a document, a status-history row and a
+      // notification as well as the application — so the documents list, the
+      // checklist and the notification bell are all stale, not just this row.
+      queryClient.invalidateQueries({ queryKey: queryKeys.documents.all });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["checklist"] });
+      toast.success("Recorded — the applicant has been notified");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Couldn't record that")),
+  });
+}
+
 export function useDeleteApplication() {
   const invalidate = useInvalidateApplications();
   return useMutation({

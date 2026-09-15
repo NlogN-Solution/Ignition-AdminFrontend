@@ -1,33 +1,47 @@
 import {
-  GraduationCap,
   UserPlus,
-  ShieldCheck,
-  Flame,
-  UserX,
+  Users,
   TrendingUp,
   FileText,
   Award,
   Plane,
-  Wallet,
+  GraduationCap,
   CheckSquare,
   CalendarDays,
-  Building2,
-  Globe2,
-  BookOpen,
 } from "lucide-react";
 import { StatCard } from "@/components/shared/StatCard";
 import { useDashboardCounts } from "./hooks";
 import { syntheticSeries } from "./service";
-import { formatCurrency } from "@/utils/format";
 
+/**
+ * The numbers Ignition is actually run on.
+ *
+ * This was fifteen tiles. Seven of them have gone, for two different reasons:
+ *
+ *   - **Prospects, Hot leads, Lost leads** encoded the old four-tab pipeline as
+ *     three separate headline numbers. There is one lead list now and one
+ *     lifecycle on each row (see `pages/leads/LeadsPage`), so slicing the same
+ *     set three ways at the top of the dashboard says less than the list does,
+ *     and said it in a vocabulary the list no longer uses.
+ *   - **Universities, Countries, Courses** counted catalogue rows. That is
+ *     inventory, not activity: the number only changes when someone runs an
+ *     import, so a tile that tracks it is a tile that never moves. The
+ *     catalogue has its own section, which is where you go when you care.
+ *   - **Revenue collected** is a finance figure with a finance screen behind it.
+ *     It stays on the Finance dashboard, where the person who acts on it works,
+ *     rather than heading the console for a counsellor who cannot act on it.
+ *
+ * What is left is one row that reads as a journey, left to right, in the same
+ * order as the lifecycle rails below it: who arrived, who is being worked, what
+ * is in flight, what landed — plus the two operational counts (tasks,
+ * appointments) that say what to do today.
+ */
 export function AnalyticsGrid() {
   const counts = useDashboardCounts();
 
   const cards = [
-    { key: "raw-leads", label: "Raw Leads", value: counts.rawLeads, icon: UserPlus, href: "/leads?tab=raw", accent: "info" as const },
-    { key: "prospects", label: "Prospects", value: counts.prospects, icon: ShieldCheck, href: "/leads?tab=prospect", accent: "primary" as const },
-    { key: "hot-leads", label: "Hot Leads", value: counts.hotLeads, icon: Flame, href: "/leads?priority=hot", accent: "danger" as const },
-    { key: "lost-leads", label: "Lost Leads", value: counts.lostLeads, icon: UserX, href: "/leads?tab=lost", accent: "danger" as const },
+    { key: "raw-leads", label: "New & in progress", value: counts.rawLeads, icon: UserPlus, href: "/leads?stage=new,contacted,follow_up", accent: "info" as const },
+    { key: "leads", label: "Total leads", value: counts.leads, icon: Users, href: "/leads", accent: "primary" as const },
     {
       key: "conversion-rate",
       label: "Conversion rate",
@@ -37,28 +51,16 @@ export function AnalyticsGrid() {
       accent: "success" as const,
       format: (v: number) => `${Math.round(v)}%`,
     },
-    { key: "clients", label: "Clients", value: counts.clients, icon: GraduationCap, href: "/leads?tab=client", accent: "primary" as const },
+    { key: "clients", label: "Clients", value: counts.clients, icon: GraduationCap, href: "/leads?stage=converted", accent: "primary" as const },
     { key: "applications", label: "Applications", value: counts.applications, icon: FileText, href: "/applications", accent: "primary" as const },
-    { key: "offers", label: "Offers received", value: counts.offers, icon: Award, href: "/applications", accent: "success" as const },
+    { key: "offers", label: "Offers received", value: counts.offers, icon: Award, href: "/applications?", accent: "success" as const },
     { key: "visa", label: "Visa in process", value: counts.visaProcessing, icon: Plane, href: "/applications", accent: "warning" as const },
-    {
-      key: "revenue",
-      label: "Revenue collected",
-      value: counts.revenue,
-      icon: Wallet,
-      href: "/payments",
-      accent: "success" as const,
-      format: (v: number) => formatCurrency(v),
-    },
     { key: "tasks", label: "Open tasks", value: counts.openTasks, icon: CheckSquare, href: "/tasks", accent: "warning" as const },
     { key: "appointments", label: "Appointments", value: counts.appointments, icon: CalendarDays, href: "/appointments", accent: "info" as const },
-    { key: "universities", label: "Universities", value: counts.universities, icon: Building2, href: "/website/universities", accent: "primary" as const },
-    { key: "countries", label: "Countries", value: counts.countries, icon: Globe2, href: "/website/countries", accent: "info" as const },
-    { key: "courses", label: "Courses", value: counts.courses, icon: BookOpen, href: "/website/courses", accent: "primary" as const },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
       {cards.map((card) => {
         const { sparkline, trend } = syntheticSeries(card.key, card.value);
         return (

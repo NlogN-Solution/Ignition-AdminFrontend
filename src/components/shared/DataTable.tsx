@@ -31,6 +31,16 @@ interface DataTableProps<T> {
   limit?: number;
   total?: number;
   onPageChange?: (page: number) => void;
+  /**
+   * How much room a row gets.
+   *
+   * `compact` is the console default and what every existing table renders at —
+   * 13px in a 2px-padded cell, tuned for fitting a lot of records on screen.
+   * `spacious` is for the two lists people actually *read* rather than scan for
+   * a row they already know: Leads and Applications. Bigger type, room to put a
+   * second line under a name, and a row you can pick out from across a desk.
+   */
+  density?: "compact" | "spacious";
 }
 
 export function DataTable<T>({
@@ -49,7 +59,9 @@ export function DataTable<T>({
   limit = 20,
   total,
   onPageChange,
+  density = "compact",
 }: DataTableProps<T>) {
+  const spacious = density === "spacious";
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const allColumns: ColumnDef<T, any>[] = selectable
@@ -106,10 +118,42 @@ export function DataTable<T>({
   const totalPages = total !== undefined ? Math.max(1, Math.ceil(total / limit)) : undefined;
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-[var(--border)]">
-      <div className="max-h-[calc(100svh-280px)] overflow-auto">
-        <Table style={{ width: table.getTotalSize() }}>
-          <TableHeader className="sticky top-0 z-10 bg-[color-mix(in_srgb,var(--card)_92%,transparent)] backdrop-blur-[12px]">
+    /*
+      No card around the list.
+
+      Every list in the console used to sit inside a rounded, ringed `bg-card`
+      panel — a box drawn around data that is already the whole point of the
+      page. It made the table read as one more widget on the screen rather than
+      as the screen's content, and it inset the first column from the page's own
+      left edge, so the heading above it and the first value under it never
+      lined up.
+
+      What is left is the data and its hairlines. Rows still separate, the
+      header still reads as a header, and the first and last cells sit flush
+      with the page gutter so the table aligns with everything above it.
+
+      Two things went with the card, both deliberately. The internal
+      `max-height` scroll area: these lists are paginated at 20 rows, so it
+      almost never engaged, and when it did it put a second scrollbar inside the
+      page — the clearest possible signal that you are looking at a box. And the
+      sticky header, which only worked *because* of that inner scroller; over 20
+      rows it was earning nothing.
+    */
+    <div className="w-full">
+      {/* No scroll wrapper here: `Table` already renders its own
+          `relative w-full overflow-x-auto` container, and nesting a second one
+          gave the page two horizontal scrollbars for the same overflow. */}
+      <div>
+        {/*
+          `minWidth`, not `width`. Pinning the table to the sum of its column
+          sizes meant it stopped wherever those added up to — on a wide screen
+          the rows ended short of the page's right edge, with the hairlines
+          trailing off into empty space, which looked like a container even
+          after the container was gone. As a minimum it fills whatever room
+          there is and still scrolls horizontally when the columns need more.
+        */}
+        <Table className="w-full" style={{ minWidth: table.getTotalSize() }}>
+          <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => {
@@ -119,7 +163,11 @@ export function DataTable<T>({
                     <TableHead
                       key={header.id}
                       style={{ width: header.getSize() }}
-                      className="relative select-none whitespace-nowrap bg-transparent text-[11.5px] font-medium tracking-[0.005em] text-muted-foreground"
+                      className={cn(
+                        "relative select-none whitespace-nowrap bg-transparent font-medium tracking-[0.005em] text-muted-foreground",
+                        "first:pl-0 last:pr-0",
+                        spacious ? "h-11 px-4 text-[12px] uppercase tracking-[0.06em]" : "text-[11.5px]",
+                      )}
                     >
                       {header.isPlaceholder ? null : (
                         <button
@@ -174,7 +222,11 @@ export function DataTable<T>({
                   className={cn(onRowClick && "cursor-pointer")}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} style={{ width: cell.column.getSize() }} className="text-[13px]">
+                    <TableCell
+                      key={cell.id}
+                      style={{ width: cell.column.getSize() }}
+                      className={cn("first:pl-0 last:pr-0", spacious ? "px-4 py-4 text-[15px]" : "text-[13px]")}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -186,7 +238,7 @@ export function DataTable<T>({
       </div>
 
       {total !== undefined && onPageChange && (
-        <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
+        <div className="flex items-center justify-between border-t border-border py-3">
           <p className="text-xs text-muted-foreground">
             {total === 0 ? "0 results" : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`}
           </p>

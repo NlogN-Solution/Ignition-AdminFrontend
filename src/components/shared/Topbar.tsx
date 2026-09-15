@@ -39,6 +39,15 @@ import { EmptyState } from "./EmptyState";
 import { NotificationType, UserRole } from "@/types/enums";
 import { cn } from "@/lib/utils";
 
+/**
+ * Where a notification goes when there is nothing more specific.
+ *
+ * The fallback, not the mechanism. Notifications now carry their own
+ * `action_url` — the server writes it, because the server is what knows which
+ * surface owns an entity — so "New application submitted" opens *that*
+ * application rather than the list. This map is what older rows, written
+ * before the column existed, still land on.
+ */
 const NOTIFICATION_ROUTES: Partial<Record<NotificationType, string>> = {
   [NotificationType.DOCUMENT]: "/documents",
   [NotificationType.LEAD]: "/leads",
@@ -46,6 +55,7 @@ const NOTIFICATION_ROUTES: Partial<Record<NotificationType, string>> = {
   [NotificationType.APPOINTMENT]: "/appointments",
   [NotificationType.PAYMENT]: "/payments",
   [NotificationType.APPLICATION]: "/applications",
+  [NotificationType.MESSAGE]: "/communication",
 };
 
 export function Topbar() {
@@ -137,7 +147,9 @@ export function Topbar() {
                     key={n.id}
                     onClick={() => {
                       if (!n.is_read) markRead.mutate(n.id);
-                      const route = NOTIFICATION_ROUTES[n.type];
+                      // The server's own answer first; the type map is only
+                      // for rows that predate `action_url`.
+                      const route = n.action_url ?? NOTIFICATION_ROUTES[n.type];
                       if (route) navigate(route);
                     }}
                     className={cn(
