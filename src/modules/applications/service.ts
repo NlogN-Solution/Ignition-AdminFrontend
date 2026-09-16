@@ -75,6 +75,19 @@ export const applicationService = {
     return data;
   },
 
+  /**
+   * Take a student's request off the queue: `requested` → `draft`.
+   *
+   * Its own endpoint rather than a status change, because accepting a request
+   * is a commitment and "set the dropdown to Draft" is not how anyone would
+   * describe making one. The backend still writes it to status history with
+   * the counsellor's id.
+   */
+  async acceptRequest(id: string): Promise<ApplicationRead> {
+    const { data } = await apiClient.post<ApplicationRead>(`/applications/${id}/accept`);
+    return data;
+  },
+
   async changeStatus(id: string, status: string, remarks?: string): Promise<ApplicationRead> {
     const { data } = await apiClient.post<ApplicationRead>(`/applications/${id}/status`, { status, remarks });
     return data;

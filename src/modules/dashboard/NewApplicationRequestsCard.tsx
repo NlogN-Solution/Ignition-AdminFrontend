@@ -1,142 +1,104 @@
-import { Link, useNavigate } from "react-router";
-import { ArrowRight, FileCheck2, UserPlus } from "lucide-react";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { FileCheck2 } from "lucide-react";
 import { StudentNameCell } from "@/modules/users/StudentNameCell";
-import { CourseWithUniversityCell } from "@/modules/academic/CourseWithUniversityCell";
+import { StudentMonogram } from "@/modules/users/StudentMonogram";
+import { CourseNameCell } from "@/modules/academic/CourseNameCell";
 import { useApplications } from "@/modules/applications/hooks";
-import { formatRelativeTime } from "@/utils/format";
 import { ApplicationStatus } from "@/types/enums";
+import { ArrivalsCard, type ArrivalRow } from "./ArrivalsCard";
 
 /**
  * Applications waiting for somebody to pick them up.
  *
  * ## Why this is the top of the dashboard
  *
- * A student pressing Submit is the one event in this product where the delay
- * is entirely Ignition's fault and entirely invisible: the application moves to
- * `ready_to_submit` and then sits there until a counsellor happens to open the
+ * A student pressing Apply is the one event in this product where the delay is
+ * entirely Ignition's fault and entirely invisible: the application is created
+ * as `requested` and then sits there until a counsellor happens to open the
  * list. Nothing told anyone. This is the "situational awareness" the brief asks
  * for, reduced to the single question worth putting first — *is anything
  * waiting on us right now?*
  *
- * ## What it deliberately does not do
+ * It counts `requested`, which is the queue itself. It used to count
+ * `ready_to_submit` — students who had already been accepted and had finished
+ * their part — which is a real queue but a later and smaller one, and it meant
+ * the card named "New application requests" was the one place a new request
+ * did not appear.
  *
- * It does not repeat the applications table. Six columns, five rows, one
- * action: enough to decide whether to act, not enough to work from. Everything
- * else is one click away, which is the correct division between a dashboard
- * and a screen.
+ * ## What it stopped doing
  *
- * Unassigned ones are called out, because an application with no counsellor is
- * the one most likely to be missed — nobody's queue contains it.
+ * It used to be a six-column table of the five oldest, with a Review button on
+ * each row: the applications list, printed on the dashboard, one page short.
+ * Two screens showing the same rows means the dashboard is where people start
+ * working, and the dashboard is a bad place to work — no filters, no sorting,
+ * no bulk anything. It is three names and a count now, beside the
+ * registrations card and in the same shape, and Review is where reviewing
+ * happens.
+ *
+ * The one thing the table said that a name does not is which applications have
+ * no counsellor, and that is the one most likely to be missed because nobody's
+ * queue contains it. It survives as the count in the subtitle.
  */
 
-const PAGE_SIZE = 6;
+const WINDOW_SIZE = 50;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function countInWindow(dates: string[], fromDaysAgo: number, toDaysAgo: number) {
+  const now = Date.now();
+  return dates.filter((iso) => {
+    const age = now - new Date(iso).getTime();
+    return age >= fromDaysAgo * DAY_MS && age < toDaysAgo * DAY_MS;
+  }).length;
+}
 
 export function NewApplicationRequestsCard() {
-  const navigate = useNavigate();
+  /**
+   * A working set rather than one page of five.
+   *
+   * The card shows three, but the two seven-day windows behind the delta have
+   * to be counted from rows, and `updated_at` is the only timestamp this shape
+   * carries. Fifty is enough for a fortnight at any volume this business has
+   * seen; past that the delta understates rather than invents.
+   */
   const { data, isLoading } = useApplications({
-    status: ApplicationStatus.READY_TO_SUBMIT,
-    limit: PAGE_SIZE,
+    status: ApplicationStatus.REQUESTED,
+    limit: WINDOW_SIZE,
     page: 1,
   });
 
   const items = data?.items ?? [];
+  const sorted = [...items].sort(
+    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+  );
+  const dates = sorted.map((a) => a.updated_at);
+  const unassigned = items.filter((a) => !a.counsellor_id).length;
 
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-12 w-full" />
-        ))}
-      </div>
-    );
-  }
+  const rows: ArrivalRow[] = sorted.map((application) => ({
+    id: application.id,
+    name: <StudentNameCell userId={application.student_id} />,
+    monogram: <StudentMonogram userId={application.student_id} />,
+    detail: <CourseNameCell programId={application.program_id} />,
+    at: application.updated_at,
+    to: `/applications/${application.id}`,
+  }));
 
-  if (items.length === 0) {
-    return (
-      <EmptyState
-        icon={FileCheck2}
-        title="Nothing waiting"
-        description="Applications a student has finished and handed over will appear here."
-        className="border-none py-8"
-      />
-    );
-  }
+  const waiting = data?.total ?? items.length;
 
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-[13px] text-muted-foreground">
-          <span className="font-semibold text-foreground">{data?.total ?? items.length}</span> waiting
-          for review
-        </p>
-        <Link
-          to={`/applications?status=${ApplicationStatus.READY_TO_SUBMIT}`}
-          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-        >
-          See all <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
-
-      {/* A table on desktop, stacked rows on a phone. `overflow-x-auto` rather
-          than a min-width that would push the page sideways. */}
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[620px] text-left text-[13px]">
-          <thead>
-            <tr className="border-b border-border text-[11.5px] uppercase tracking-wide text-muted-foreground">
-              <th scope="col" className="pb-2 pr-3 font-medium">Applicant</th>
-              <th scope="col" className="pb-2 pr-3 font-medium">Course</th>
-              <th scope="col" className="pb-2 pr-3 font-medium">Submitted</th>
-              <th scope="col" className="pb-2 pr-3 font-medium">Counsellor</th>
-              <th scope="col" className="pb-2 font-medium sr-only">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {items.map((application) => (
-              <tr key={application.id} className="group">
-                <td className="py-2.5 pr-3 font-medium text-foreground">
-                  <StudentNameCell userId={application.student_id} />
-                </td>
-                {/* The staff `ApplicationRead` carries `program_id` and not
-                    the programme itself — unlike the student-facing shape,
-                    which embeds a summary. This is the same cell the
-                    applications list uses, so the two read identically and
-                    share one cache entry per programme. */}
-                <td className="max-w-[240px] py-2.5 pr-3 text-muted-foreground">
-                  <CourseWithUniversityCell programId={application.program_id} />
-                </td>
-                <td className="whitespace-nowrap py-2.5 pr-3 text-muted-foreground">
-                  {formatRelativeTime(application.updated_at)}
-                </td>
-                <td className="py-2.5 pr-3">
-                  {application.counsellor_id ? (
-                    <StudentNameCell userId={application.counsellor_id} />
-                  ) : (
-                    // Not a dash. An unassigned application is the one most
-                    // likely to be missed, so it is the one thing on this row
-                    // that is allowed to shout.
-                    <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[11.5px] font-medium text-warning">
-                      <UserPlus className="h-3 w-3" /> Unassigned
-                    </span>
-                  )}
-                </td>
-                <td className="py-2.5 text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => navigate(`/applications/${application.id}`)}
-                  >
-                    Review
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <ArrivalsCard
+      icon={FileCheck2}
+      tone="success"
+      title="New application requests"
+      subtitle={
+        unassigned > 0
+          ? `${waiting} waiting to be accepted · ${unassigned} with no counsellor`
+          : `${waiting} waiting to be accepted`
+      }
+      count={countInWindow(dates, 0, 7)}
+      previous={countInWindow(dates, 7, 14)}
+      rows={rows}
+      isLoading={isLoading}
+      emptyText="Nothing waiting. Applications students start from a course page appear here until a counsellor accepts them."
+      viewAllTo={`/applications?status=${ApplicationStatus.REQUESTED}`}
+    />
   );
 }

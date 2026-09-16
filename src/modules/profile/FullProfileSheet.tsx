@@ -1,10 +1,13 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AvatarUploader } from "./AvatarUploader";
-import { PersonalInfoCard } from "./PersonalInfoCard";
-import { StudentDetailsCard } from "./StudentDetailsCard";
-import { EducationHistoryCard } from "./EducationHistoryCard";
-import { WorkExperienceCard } from "./WorkExperienceCard";
+import { StudentProfilePanel } from "./StudentProfilePanel";
 
+/**
+ * The profile as a slide-over, for places that cannot give it a tab.
+ *
+ * Its body is `StudentProfilePanel`, which is also what the Profile tab on the
+ * lead and the Applicant profile tab on the application render — one
+ * definition of "the student's record", reachable three ways.
+ */
 export function FullProfileSheet({
   userId,
   name,
@@ -24,20 +27,8 @@ export function FullProfileSheet({
           <SheetDescription>Everything on file for this applicant — view and edit as needed.</SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-4 px-4 pb-6">
-          <section className="rounded-xl border border-border bg-card p-4">
-            <AvatarUploader userId={userId} />
-          </section>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <PersonalInfoCard userId={userId} />
-            <StudentDetailsCard userId={userId} />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <EducationHistoryCard userId={userId} />
-            <WorkExperienceCard userId={userId} />
-          </div>
+        <div className="px-4 pb-6">
+          <StudentProfilePanel userId={userId} />
         </div>
       </SheetContent>
     </Sheet>

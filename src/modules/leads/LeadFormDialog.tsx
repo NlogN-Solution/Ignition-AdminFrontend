@@ -172,10 +172,11 @@ export function LeadFormDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Interested country</Label>
-              <Input {...register("interested_country")} placeholder="Australia" />
-            </div>
+            {/* No "interested country". Ignition places students in the UK and
+                nowhere else, so the field asked a question with one answer and
+                the column that showed it read "United Kingdom" all the way
+                down. The database column is untouched — old rows keep what
+                they have — it just has no UI any more. */}
             <div className="space-y-1.5">
               <Label>Interested course</Label>
               <Input {...register("interested_course")} placeholder="MBA" />

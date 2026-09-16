@@ -8,6 +8,13 @@ import { cn } from "@/lib/utils";
 
 interface StatCardProps {
   label: string;
+  /**
+   * A second, quieter line under the label — what the number counts, when the
+   * label alone is ambiguous. "Conversion rate" says nothing about which two
+   * numbers; "Applications" says nothing about whether drafts are in it.
+   * Omitted on most tiles, where the label is the whole answer.
+   */
+  hint?: string;
   value: number;
   icon: LucideIcon;
   href?: string;
@@ -41,7 +48,7 @@ const STROKE_COLORS: Record<NonNullable<StatCardProps["accent"]>, string> = {
   danger: "var(--danger)",
 };
 
-export function StatCard({ label, value, icon: Icon, href, trend, sparkline, format, accent = "primary" }: StatCardProps) {
+export function StatCard({ label, hint, value, icon: Icon, href, trend, sparkline, format, accent = "primary" }: StatCardProps) {
   const animated = useCountUp(value);
   const displayValue = format ? format(animated) : formatNumber(Math.round(animated));
   const gradientId = `spark-${label.replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -85,12 +92,13 @@ export function StatCard({ label, value, icon: Icon, href, trend, sparkline, for
 
       <div className="relative z-10 mt-5">
         <p className="text-[30px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-foreground">{displayValue}</p>
-        <div className="mt-2 flex items-center gap-1 text-[13px] text-muted-foreground">
-          <span className="truncate">{label}</span>
+        <div className="mt-2 flex items-center gap-1 text-[13px] text-foreground">
+          <span className="truncate font-medium">{label}</span>
           {href && (
             <ArrowRight className="h-3 w-3 shrink-0 -translate-x-1 opacity-0 transition-all duration-300 ease-[var(--ease-swift)] group-hover:translate-x-0 group-hover:opacity-100" />
           )}
         </div>
+        {hint && <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{hint}</p>}
       </div>
 
       {sparkline && sparkline.length > 1 && (

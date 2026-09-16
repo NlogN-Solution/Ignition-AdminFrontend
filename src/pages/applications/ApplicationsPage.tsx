@@ -7,15 +7,22 @@ import { ListToolbar } from "@/components/shared/ListToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LifecycleRail } from "@/components/shared/LifecycleRail";
+import { InlineSelectCell } from "@/components/shared/InlineSelectCell";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQueryFlagDialog } from "@/hooks/useQueryFlagDialog";
-import { useApplications, useUpdateApplication } from "@/modules/applications/hooks";
+import {
+  useApplications,
+  useChangeApplicationStatusById,
+  useStatusRequirements,
+  useUpdateApplication,
+} from "@/modules/applications/hooks";
 import { AssignAdvisorDialog } from "@/modules/applications/detail/AssignAdvisorDialog";
 import { applicationReference } from "@/modules/applications/reference";
 import { ApplicationFormDialog } from "@/modules/applications/ApplicationFormDialog";
 import {
   APPLICATION_PHASES,
+  APPLICATION_STATUS_LABELS,
   APPLICATION_STAGE_FILTERS,
   applicationLifecycleOf,
 } from "@/modules/applications/lifecycle";
@@ -99,6 +106,34 @@ export function ApplicationsPage() {
     return dated.reduce((latest, e) => (new Date(e.at) > new Date(latest.at) ? e : latest));
   }
 
+  const changeStage = useChangeApplicationStatusById();
+
+  /**
+   * Every status, with the three that cannot be set from here disabled.
+   *
+   * Offer, CAS and a visa decision record something a university issued, so the
+   * backend refuses them on the plain status endpoint — they need a date and a
+   * letter, collected by `ChangeStatusDialog` on the record itself
+   * (`services/status_requirements.py`). The list shows them greyed with the
+   * reason rather than hiding them, because "why can I not pick offer received"
+   * is the question a missing option would leave unanswered.
+   *
+   * The set comes from the server's own config, so a fourth milestone added on
+   * the backend disables itself here with no change to this file.
+   */
+  const { data: statusRequirements } = useStatusRequirements();
+  const stageOptions = useMemo(
+    () =>
+      (Object.values(ApplicationStatus) as ApplicationStatus[]).map((value) => ({
+        value,
+        label: APPLICATION_STATUS_LABELS[value],
+        disabledReason: (statusRequirements ?? []).some((r) => r.status === value)
+          ? "Needs a date and a letter — open the application to record it"
+          : undefined,
+      })),
+    [statusRequirements],
+  );
+
   const columns = useMemo<ColumnDef<ApplicationRead, any>[]>(
     () => [
       {
@@ -133,17 +168,31 @@ export function ApplicationsPage() {
       },
       {
         accessorKey: "status",
-        header: "Lifecycle",
-        size: 230,
-        cell: ({ getValue }) => {
-          const cycle = applicationLifecycleOf(getValue<ApplicationStatus>());
+        header: "Stage",
+        size: 240,
+        cell: ({ row }) => {
+          const application = row.original;
+          const cycle = applicationLifecycleOf(application.status);
           return (
-            <LifecycleRail
-              steps={APPLICATION_PHASES}
-              index={cycle.index}
-              ended={cycle.ended}
-              caption={cycle.statusLabel}
-            />
+            <div className="min-w-0">
+              <LifecycleRail steps={APPLICATION_PHASES} index={cycle.index} ended={cycle.ended} />
+              {/* The rail's caption, made editable in place — the same move as
+                  the Owner column beside it, for the same reason: moving an
+                  application along meant opening it, changing it and coming
+                  back, once per row. */}
+              <div className="mt-1">
+                <InlineSelectCell
+                  label="Set stage"
+                  value={application.status}
+                  isSaving={changeStage.isPending && changeStage.variables?.id === application.id}
+                  options={stageOptions}
+                  disabled={!canManage}
+                  onChange={(status) => changeStage.mutate({ id: application.id, status })}
+                >
+                  <span className="text-[13px] text-muted-foreground">{cycle.statusLabel}</span>
+                </InlineSelectCell>
+              </div>
+            </div>
           );
         },
       },
@@ -203,7 +252,7 @@ export function ApplicationsPage() {
         },
       },
     ],
-    [canManage],
+    [canManage, changeStage, stageOptions],
   );
 
   return (

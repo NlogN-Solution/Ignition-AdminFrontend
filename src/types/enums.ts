@@ -176,6 +176,9 @@ export const LeadActivityType = {
 export type LeadActivityType = (typeof LeadActivityType)[keyof typeof LeadActivityType];
 
 export const ApplicationStatus = {
+  /** A student asked; nobody has agreed yet. See the backend enum for why this
+   * is not `draft`. */
+  REQUESTED: "requested",
   DRAFT: "draft",
   DOCUMENTS_PENDING: "documents_pending",
   READY_TO_SUBMIT: "ready_to_submit",

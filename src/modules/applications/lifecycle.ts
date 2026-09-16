@@ -26,7 +26,24 @@ import { ApplicationStatus } from "@/types/enums";
  * withdrawal at draft, and drawing them identically would lose that.
  */
 
-export const APPLICATION_PHASES = ["Preparing", "Submitted", "Offer", "CAS", "Visa", "Enrolled"] as const;
+/**
+ * `Requested` leads, and it is not cosmetic.
+ *
+ * A student opening an application from a course page used to land in
+ * "Preparing", which is a claim that Ignition had started work. It had not —
+ * nobody had looked at it. The phase exists so the rail can say "waiting on
+ * us" instead, and so a counsellor accepting the request is a visible step
+ * rather than a status that was already set.
+ */
+export const APPLICATION_PHASES = [
+  "Requested",
+  "Preparing",
+  "Submitted",
+  "Offer",
+  "CAS",
+  "Visa",
+  "Enrolled",
+] as const;
 
 /**
  * CAS sits between Offer and Visa because that is the order it happens in, and
@@ -37,22 +54,23 @@ export const APPLICATION_PHASES = ["Preparing", "Submitted", "Offer", "CAS", "Vi
  * have hidden the commonest place a UK application actually stalls.
  */
 const PHASE_INDEX: Record<ApplicationStatus, number> = {
-  draft: 0,
-  documents_pending: 0,
-  ready_to_submit: 0,
-  submitted: 1,
-  under_review: 1,
-  offer_received: 2,
-  offer_accepted: 2,
-  cas_received: 3,
-  visa_processing: 4,
-  visa_approved: 4,
-  enrolled: 5,
+  requested: 0,
+  draft: 1,
+  documents_pending: 1,
+  ready_to_submit: 1,
+  submitted: 2,
+  under_review: 2,
+  offer_received: 3,
+  offer_accepted: 3,
+  cas_received: 4,
+  visa_processing: 5,
+  visa_approved: 5,
+  enrolled: 6,
   // Endings: the index is where they stopped, not a phase they reached.
-  offer_declined: 2,
-  visa_rejected: 4,
-  withdrawn: 0,
-  rejected: 1,
+  offer_declined: 3,
+  visa_rejected: 5,
+  withdrawn: 1,
+  rejected: 2,
 };
 
 const ENDED: ApplicationStatus[] = [
@@ -64,6 +82,7 @@ const ENDED: ApplicationStatus[] = [
 
 /** What the caption says. Plainer than the raw enum, same meaning. */
 export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
+  requested: "Requested",
   draft: "Draft",
   documents_pending: "Documents Pending",
   ready_to_submit: "Ready to Submit",
@@ -107,6 +126,7 @@ export function applicationLifecycleOf(status: ApplicationStatus): ApplicationLi
  */
 export const APPLICATION_STAGE_FILTERS = [
   { value: "all", label: "All stages" },
+  { value: ApplicationStatus.REQUESTED, label: "Requested" },
   { value: ApplicationStatus.DOCUMENTS_PENDING, label: "Documents pending" },
   { value: ApplicationStatus.SUBMITTED, label: "Submitted" },
   { value: ApplicationStatus.UNDER_REVIEW, label: "Under review" },
@@ -130,6 +150,7 @@ export const APPLICATION_STAGE_FILTERS = [
  * each component (see §23 of the redesign brief).
  */
 export const JOURNEY_STAGES = [
+  "Requested",
   "Profile & Documents",
   "University Application",
   "Offer & Acceptance",
@@ -194,6 +215,7 @@ export function nextStepFor(status: ApplicationStatus): { title: string; body: s
   }
 
   const byStage = [
+    "The student asked to apply and nobody has picked this up yet. Accept the request to start work on it, or decline it if the course is not realistic for them.",
     "Collect the outstanding documents before progressing the application.",
     "Monitor university updates and record any correspondence against this application.",
     "Support the student with offer acceptance, then chase the university for the CAS.",

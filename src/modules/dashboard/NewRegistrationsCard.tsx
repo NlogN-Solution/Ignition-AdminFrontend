@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, Sparkles, UserRoundPlus } from "lucide-react";
+import { Sparkles, UserRoundPlus } from "lucide-react";
 import { leadService } from "@/modules/leads/service";
 import type { LeadRead } from "@/modules/leads/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatRelativeTime } from "@/utils/format";
-import { cn } from "@/lib/utils";
+import { initials } from "@/utils/format";
+import { ArrivalsCard, type ArrivalRow } from "./ArrivalsCard";
 
 /**
  * Who just signed up on the student portal.
@@ -22,9 +20,10 @@ import { cn } from "@/lib/utils";
  * is the tab staff look at least often — the freshest, warmest enquiry in the
  * business landed in the quietest corner of the console and sat there.
  *
- * So: one card, pinned to the top of the dashboard — `alwaysFirst`, above the
- * stat row and above the reader's own pins, and not draggable out of that
- * position — answering one question.
+ * So: one card, at the top of the dashboard, answering one question. It is
+ * half the width now and sits beside the applications waiting for review,
+ * because the two are the same question about different arrivals and reading
+ * them together is what "is anything waiting on us" actually means.
  *
  * ## The notifier
  *
@@ -81,8 +80,15 @@ function useRecentRegistrations() {
   });
 }
 
-function isWithinDays(iso: string, days: number) {
-  return Date.now() - new Date(iso).getTime() <= days * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** How many of `dates` fall in the window `[from, to)` days ago. */
+function countInWindow(dates: string[], fromDaysAgo: number, toDaysAgo: number) {
+  const now = Date.now();
+  return dates.filter((iso) => {
+    const age = now - new Date(iso).getTime();
+    return age >= fromDaysAgo * DAY_MS && age < toDaysAgo * DAY_MS;
+  }).length;
 }
 
 export function NewRegistrationsCard() {
@@ -118,95 +124,34 @@ export function NewRegistrationsCard() {
     writeSeen(newest);
   }, [items]);
 
-  const thisWeek = items.filter((l) => isWithinDays(l.converted_at as string, 7)).length;
+  /**
+   * The list is capped at 50 rows, so the two windows are only trustworthy
+   * while fewer than fifty people registered in a fortnight. At that point the
+   * delta understates rather than invents, which is the right way round.
+   */
+  const dates = items.map((l) => l.converted_at as string);
+
+  const rows: ArrivalRow[] = items.map((lead) => ({
+    id: lead.id,
+    name: `${lead.first_name} ${lead.last_name ?? ""}`.trim(),
+    monogram: initials(lead.first_name, lead.last_name),
+    detail: lead.email ?? lead.phone,
+    at: lead.converted_at,
+    to: `/leads/${lead.id}`,
+  }));
 
   return (
-    <div className="relative isolate overflow-hidden rounded-2xl bg-card p-5 ring-1 ring-[var(--border)]">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-success opacity-[0.10] blur-3xl"
-      />
-
-      {/* Full width, so it reads across rather than down: who/how many on the
-          left, the actual people on the right. A narrow column would have made
-          this a list of two names under a heading, which is what the activity
-          feed already is. */}
-      <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:gap-8">
-        <div className="flex flex-col justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-success/10 text-success ring-1 ring-success/15">
-              <UserRoundPlus className="h-4.5 w-4.5" strokeWidth={2} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">New student registrations</p>
-              <p className="text-[13px] text-muted-foreground">Signed up on the portal — already in your pipeline</p>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-[38px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-foreground">
-                {isLoading ? "—" : thisWeek}
-              </span>
-              <span className="text-[13.5px] text-muted-foreground">in the last 7 days</span>
-            </div>
-            <Link
-              to="/leads?stage=converted"
-              className="mt-3 inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline"
-            >
-              See them in Leads <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        </div>
-
-        <div>
-          {isLoading ? (
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              <Skeleton className="h-[62px] rounded-xl" />
-              <Skeleton className="h-[62px] rounded-xl" />
-              <Skeleton className="h-[62px] rounded-xl" />
-            </div>
-          ) : items.length === 0 ? (
-            <div className="flex h-full items-center rounded-xl border border-dashed border-border px-5 py-6">
-              <p className="text-[13.5px] text-muted-foreground">
-                Nobody has registered on the portal yet. When they do, they appear here and on the Leads list the
-                moment they finish signing up — and everyone on the lead desk gets a notification.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {items.slice(0, 6).map((lead) => {
-                const name = `${lead.first_name} ${lead.last_name ?? ""}`.trim();
-                const isNew = isWithinDays(lead.converted_at as string, 2);
-                return (
-                  <Link
-                    key={lead.id}
-                    to={`/leads/${lead.id}`}
-                    className={cn(
-                      "min-w-0 rounded-xl px-3.5 py-3 ring-1 ring-[var(--border)] transition-colors",
-                      "hover:bg-black/[0.025] dark:hover:bg-white/[0.035]",
-                      isNew && "bg-success/[0.04] ring-success/20",
-                    )}
-                  >
-                    <p className="flex items-center gap-2 truncate text-[14.5px] font-medium text-foreground">
-                      <span className="truncate">{name}</span>
-                      {isNew && (
-                        <span className="shrink-0 rounded-full bg-success/10 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-success">
-                          New
-                        </span>
-                      )}
-                    </p>
-                    <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">{lead.email ?? lead.phone}</p>
-                    <p className="mt-1 text-[12px] tabular-nums text-muted-foreground/80">
-                      {formatRelativeTime(lead.converted_at as string)}
-                    </p>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <ArrivalsCard
+      icon={UserRoundPlus}
+      tone="info"
+      title="New student registrations"
+      subtitle="Signed up on the portal — already in your pipeline"
+      count={countInWindow(dates, 0, 7)}
+      previous={countInWindow(dates, 7, 14)}
+      rows={rows}
+      isLoading={isLoading}
+      emptyText="Nobody has registered on the portal yet. When they do, they appear here and on the Leads list the moment they finish signing up — and everyone on the lead desk gets a notification."
+      viewAllTo="/leads?stage=converted"
+    />
   );
 }

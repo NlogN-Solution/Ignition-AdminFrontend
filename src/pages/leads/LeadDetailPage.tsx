@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StudentProfilePanel } from "@/modules/profile/StudentProfilePanel";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { UserPicker } from "@/components/shared/UserPicker";
@@ -102,8 +103,13 @@ const TABS_BY_STAGE: Record<LeadStage, { value: string; label: string }[]> = {
     { value: "follow-ups", label: "Follow-ups" },
     { value: "activity", label: "Activity" },
   ],
+  // Profile is client-only, and not as a policy — a raw lead has no user
+  // account behind it (`converted_user_id` is null until conversion), so there
+  // is no education, work history or passport to show. Offering the tab and
+  // then explaining it is empty would be worse than not offering it.
   client: [
     { value: "overview", label: "Overview" },
+    { value: "profile", label: "Profile" },
     { value: "communication", label: "Communication" },
     { value: "applications", label: "Applications" },
     { value: "activity", label: "Activity" },
@@ -374,7 +380,6 @@ export function LeadDetailPage() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <InfoRow icon={Phone} label="Phone" value={lead.phone} />
                   <InfoRow icon={Mail} label="Email" value={lead.email ?? "—"} />
-                  <InfoRow icon={Globe} label="Interested country" value={lead.interested_country ?? "—"} />
                   <InfoRow icon={BookOpen} label="Interested course" value={lead.interested_course ?? "—"} />
                   <InfoRow icon={CalendarClock} label="Preferred intake" value={lead.preferred_intake ?? "—"} />
                   <InfoRow icon={Globe} label="Source" value={toTitleCase(lead.source)} />
@@ -469,6 +474,18 @@ export function LeadDetailPage() {
               <FollowUpMethodChips leadId={lead.id} />
               <LeadFollowUpTimeline leadId={lead.id} leadStatus={lead.status} />
             </div>
+          </TabsContent>
+        )}
+
+        {tabs.some((t) => t.value === "profile") && (
+          <TabsContent value="profile" className="mt-4">
+            {clientUserId && canBrowseApplicants(role) ? (
+              <StudentProfilePanel userId={clientUserId} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                This lead has no portal account yet, so there is no profile to show.
+              </p>
+            )}
           </TabsContent>
         )}
 

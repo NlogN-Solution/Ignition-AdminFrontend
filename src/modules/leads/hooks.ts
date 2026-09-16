@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys } from "@/constants/queryKeys";
 import { getErrorMessage } from "@/utils/errors";
+import type { LeadPriority } from "@/types/enums";
 import { leadService } from "./service";
 import type {
   LeadConvertPayload,
@@ -184,4 +185,52 @@ export function useDueFollowUps(params: { page?: number; limit?: number; counsel
     queryKey: ["leads", "follow-ups", "due", params],
     queryFn: () => leadService.listDueFollowUps(params),
   });
+}
+
+/**
+ * Edits made from a row of the list, where the id is not known until the click.
+ *
+ * The hooks above each close over one `id`, which is right for a detail page
+ * and unusable in a table cell — you cannot call `useUpdateLead(row.id)` per
+ * row without breaking the rules of hooks. These take the id at mutate time
+ * instead, so one instance serves every row on the page.
+ *
+ * Deliberately three mutations rather than one: they hit three different
+ * endpoints (`PATCH /leads/{id}`, `POST /leads/{id}/status`,
+ * `POST /leads/{id}/assign`), status writes an activity row and assignment
+ * notifies, and collapsing them would hide that from the caller.
+ */
+export function useLeadRowEdits() {
+  const invalidate = useInvalidateLeads();
+
+  const status = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => leadService.changeStatus(id, status),
+    onSuccess: (_data, { id }) => {
+      invalidate(id);
+      toast.success("Lifecycle updated");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Couldn't update the lifecycle")),
+  });
+
+  const priority = useMutation({
+    mutationFn: ({ id, priority }: { id: string; priority: LeadPriority }) =>
+      leadService.update(id, { priority }),
+    onSuccess: (_data, { id }) => {
+      invalidate(id);
+      toast.success("Priority updated");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Couldn't update the priority")),
+  });
+
+  const owner = useMutation({
+    mutationFn: ({ id, assignedTo }: { id: string; assignedTo: string }) =>
+      leadService.assign(id, assignedTo),
+    onSuccess: (_data, { id }) => {
+      invalidate(id);
+      toast.success("Lead assigned");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Couldn't assign the lead")),
+  });
+
+  return { status, priority, owner };
 }

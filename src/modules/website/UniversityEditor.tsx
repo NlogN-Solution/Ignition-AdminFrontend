@@ -507,7 +507,7 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
               </p>
               <Field label="Typical offer"><Input {...register("entry_typical")} /></Field>
               <Field label="English requirement"><Input {...register("entry_english")} /></Field>
-              <Field label="UCAS tariff"><Input {...register("entry_tariff")} /></Field>
+              <Field label="Entry points"><Input {...register("entry_tariff")} /></Field>
               <Field label="IELTS"><Input {...register("entry_ielts")} /></Field>
             </TabsContent>
 

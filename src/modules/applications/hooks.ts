@@ -119,3 +119,43 @@ export function useDeleteApplication() {
     onError: (error) => toast.error(getErrorMessage(error, "Couldn't delete application")),
   });
 }
+
+/**
+ * A status change made from a row of the applications list.
+ *
+ * `useChangeApplicationStatus` closes over one id, which cannot work per row.
+ * This takes the id at mutate time.
+ *
+ * It only ever reaches `POST /applications/{id}/status`, the plain path. The
+ * milestone statuses — offer, CAS, visa decision — are refused there because
+ * they need a date and a letter, and a table row is the wrong place to collect
+ * either. The list disables those options and says why rather than firing a
+ * request the backend will reject.
+ */
+export function useChangeApplicationStatusById() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      applicationService.changeStatus(id, status),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.applications.statusHistory(id) });
+      toast.success("Stage updated");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Couldn't update the stage")),
+  });
+}
+
+/** Accepting a student's request, from wherever it is offered. */
+export function useAcceptApplicationRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => applicationService.acceptRequest(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.applications.statusHistory(id) });
+      toast.success("Request accepted — the application is now being prepared");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Couldn't accept the request")),
+  });
+}

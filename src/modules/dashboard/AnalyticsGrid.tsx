@@ -1,14 +1,4 @@
-import {
-  UserPlus,
-  Users,
-  TrendingUp,
-  FileText,
-  Award,
-  Plane,
-  GraduationCap,
-  CheckSquare,
-  CalendarDays,
-} from "lucide-react";
+import { UserPlus, Plane, GraduationCap, CheckSquare, CalendarDays } from "lucide-react";
 import { StatCard } from "@/components/shared/StatCard";
 import { useDashboardCounts } from "./hooks";
 import { syntheticSeries } from "./service";
@@ -35,25 +25,22 @@ import { syntheticSeries } from "./service";
  * order as the lifecycle rails below it: who arrived, who is being worked, what
  * is in flight, what landed — plus the two operational counts (tasks,
  * appointments) that say what to do today.
+ *
+ * ## Four more have moved, not gone
+ *
+ * Total leads, Applications, Offers received and Conversion rate are now the
+ * headline row at the top of the dashboard (`HeadlineStats`). They are the
+ * funnel, they are what the business is judged on, and giving them the same
+ * weight as "Appointments" buried them. Nothing was deleted and nothing is
+ * printed twice — this grid is the operational remainder, which is what it is
+ * good at.
  */
 export function AnalyticsGrid() {
   const counts = useDashboardCounts();
 
   const cards = [
     { key: "raw-leads", label: "New & in progress", value: counts.rawLeads, icon: UserPlus, href: "/leads?stage=new,contacted,follow_up", accent: "info" as const },
-    { key: "leads", label: "Total leads", value: counts.leads, icon: Users, href: "/leads", accent: "primary" as const },
-    {
-      key: "conversion-rate",
-      label: "Conversion rate",
-      value: counts.conversionRate,
-      icon: TrendingUp,
-      href: "/leads",
-      accent: "success" as const,
-      format: (v: number) => `${Math.round(v)}%`,
-    },
     { key: "clients", label: "Clients", value: counts.clients, icon: GraduationCap, href: "/leads?stage=converted", accent: "primary" as const },
-    { key: "applications", label: "Applications", value: counts.applications, icon: FileText, href: "/applications", accent: "primary" as const },
-    { key: "offers", label: "Offers received", value: counts.offers, icon: Award, href: "/applications?", accent: "success" as const },
     { key: "visa", label: "Visa in process", value: counts.visaProcessing, icon: Plane, href: "/applications", accent: "warning" as const },
     { key: "tasks", label: "Open tasks", value: counts.openTasks, icon: CheckSquare, href: "/tasks", accent: "warning" as const },
     { key: "appointments", label: "Appointments", value: counts.appointments, icon: CalendarDays, href: "/appointments", accent: "info" as const },
@@ -73,7 +60,6 @@ export function AnalyticsGrid() {
             accent={card.accent}
             sparkline={sparkline}
             trend={trend}
-            format={card.format}
           />
         );
       })}

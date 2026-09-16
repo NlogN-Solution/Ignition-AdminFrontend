@@ -1,4 +1,4 @@
-import { Activity, Clock, FileText, Home, MessageSquare, NotebookPen, Route, type LucideIcon } from "lucide-react";
+import { Activity, Clock, FileText, Home, MessageSquare, NotebookPen, UserRound, type LucideIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +23,19 @@ import { cn } from "@/lib/utils";
  * two columns, so the content gets the whole of the rest of the page.
  */
 
+/**
+ * Journey is gone and Applicant profile stands in its place.
+ *
+ * The journey tab drew the six lifecycle phases as a rail. The Overview's
+ * snapshot now draws the same six from the same `PHASE_INDEX`, with the dates
+ * against them, so the tab was a second view of a thing already on the first
+ * screen. What was missing instead was the student: their passport details,
+ * qualifications and work history were reachable only from a slide-over on the
+ * lead page, one search away from the application being worked.
+ */
 export const APPLICATION_TABS = [
   { value: "overview", label: "Overview", icon: Home },
-  { value: "journey", label: "Journey", icon: Route },
+  { value: "profile", label: "Applicant profile", icon: UserRound },
   { value: "documents", label: "Documents", icon: FileText },
   { value: "status", label: "Status History", icon: Clock },
   { value: "notes", label: "Notes", icon: NotebookPen },

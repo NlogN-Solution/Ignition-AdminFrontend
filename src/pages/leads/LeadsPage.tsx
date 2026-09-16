@@ -3,18 +3,20 @@ import { useSearchParams, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Bookmark, Download, Plus, Trash2, UserCog, UserPlus, X } from "lucide-react";
+import { Bookmark, Download, Loader2, Plus, Trash2, UserCog, UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ListToolbar } from "@/components/shared/ListToolbar";
 import { DataTable } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LifecycleRail } from "@/components/shared/LifecycleRail";
+import { InlineSelectCell } from "@/components/shared/InlineSelectCell";
 import { UserPicker } from "@/components/shared/UserPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,13 +25,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useQueryFlagDialog } from "@/hooks/useQueryFlagDialog";
-import { useLeads } from "@/modules/leads/hooks";
+import { useLeads, useLeadRowEdits } from "@/modules/leads/hooks";
 import { leadService } from "@/modules/leads/service";
 import { LeadFormDialog } from "@/modules/leads/LeadFormDialog";
 import { PriorityBadge } from "@/modules/leads/PriorityBadge";
 import { useSavedLeadFilters } from "@/modules/leads/useSavedLeadFilters";
 import { StaffNameCell } from "@/modules/users/StaffNameCell";
-import { LIFECYCLE_STEPS, STEP_LABELS, lifecycleOf } from "@/modules/leads/lifecycle";
+import { LIFECYCLE_STEPS, STATUS_LABELS, STEP_LABELS, lifecycleOf } from "@/modules/leads/lifecycle";
 import type { LeadRead } from "@/modules/leads/types";
 import { LeadPriority, LeadSource, LeadStatus, LostReason } from "@/types/enums";
 import { toTitleCase, formatDate } from "@/utils/format";
@@ -175,7 +177,6 @@ export function LeadsPage() {
       status: l.status,
       priority: l.priority,
       source: l.source,
-      country: l.interested_country ?? "",
       course: l.interested_course ?? "",
       captured: l.created_at,
       qualified: l.qualified_at ?? "",
@@ -205,6 +206,9 @@ export function LeadsPage() {
    * history the old tabs threw away — and the Lifecycle column carries where
    * they are, which is the one thing the tabs were really encoding.
    */
+  // One instance for the whole table; the row id travels with each mutate call.
+  const rowEdits = useLeadRowEdits();
+
   const columns = useMemo<ColumnDef<LeadRead, any>[]>(
     () => [
       {
@@ -232,15 +236,33 @@ export function LeadsPage() {
         header: "Lifecycle",
         size: 230,
         cell: ({ row }) => {
-          const cycle = lifecycleOf(row.original);
+          const lead = row.original;
+          const cycle = lifecycleOf(lead);
           return (
-            <LifecycleRail
-              steps={LIFECYCLE_STEPS.map((s) => STEP_LABELS[s])}
-              index={cycle.index}
-              ended={cycle.lost}
-              caption={cycle.statusLabel}
-              note={cycle.lost && cycle.lostReason ? toTitleCase(cycle.lostReason) : null}
-            />
+            <div className="min-w-0">
+              <LifecycleRail
+                steps={LIFECYCLE_STEPS.map((s) => STEP_LABELS[s])}
+                index={cycle.index}
+                ended={cycle.lost}
+                note={cycle.lost && cycle.lostReason ? toTitleCase(cycle.lostReason) : null}
+              />
+              {/* The rail's caption, made editable in place. Moving a lead
+                  along its lifecycle was the commonest edit in the console and
+                  the only one with no control on the list at all — not even in
+                  the detail page's edit dialog, which carries assignment,
+                  priority and lost but never status. */}
+              <div className="mt-1">
+                <InlineSelectCell
+                  label="Set lifecycle"
+                  value={lead.status}
+                  isSaving={rowEdits.status.isPending && rowEdits.status.variables?.id === lead.id}
+                  options={LEAD_STATUS_OPTIONS}
+                  onChange={(status) => rowEdits.status.mutate({ id: lead.id, status })}
+                >
+                  <span className="text-[13px] text-muted-foreground">{cycle.statusLabel}</span>
+                </InlineSelectCell>
+              </div>
+            </div>
           );
         },
       },
@@ -253,30 +275,39 @@ export function LeadsPage() {
       {
         accessorKey: "priority",
         header: "Priority",
-        size: 110,
-        cell: ({ getValue }) => <PriorityBadge priority={getValue()} />,
-      },
-      {
-        id: "interest",
-        accessorKey: "interested_country",
-        header: "Interest",
-        size: 180,
+        size: 120,
         cell: ({ row }) => {
-          const { interested_country: country, interested_course: course } = row.original;
-          if (!country && !course) return <span className="text-muted-foreground">—</span>;
+          const lead = row.original;
           return (
-            <div className="min-w-0">
-              <p className="truncate font-medium text-foreground">{country ?? "—"}</p>
-              {course && <p className="truncate text-[13px] text-muted-foreground">{course}</p>}
-            </div>
+            <InlineSelectCell
+              label="Set priority"
+              value={lead.priority ?? null}
+              isSaving={rowEdits.priority.isPending && rowEdits.priority.variables?.id === lead.id}
+              options={LEAD_PRIORITY_OPTIONS}
+              onChange={(priority) => rowEdits.priority.mutate({ id: lead.id, priority })}
+            >
+              {lead.priority ? (
+                <PriorityBadge priority={lead.priority} />
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </InlineSelectCell>
           );
         },
       },
       {
         accessorKey: "assigned_to",
         header: "Owner",
-        size: 150,
-        cell: ({ getValue }) => <StaffNameCell userId={getValue<string | null>()} />,
+        size: 170,
+        // A picker rather than an `InlineSelectCell`: the staff list is
+        // searchable and paged, which a fixed option list cannot be.
+        cell: ({ row }) => (
+          <OwnerCell
+            lead={row.original}
+            onAssign={(assignedTo) => rowEdits.owner.mutate({ id: row.original.id, assignedTo })}
+            isSaving={rowEdits.owner.isPending && rowEdits.owner.variables?.id === row.original.id}
+          />
+        ),
       },
       {
         // The one date that means the same thing at every stage: when did this
@@ -299,7 +330,7 @@ export function LeadsPage() {
         },
       },
     ],
-    [],
+    [rowEdits],
   );
 
   return (
@@ -593,5 +624,83 @@ function SaveFilterDialog({ open, onOpenChange, onSave }: { open: boolean; onOpe
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+
+/* ------------------------------------------------- inline edit option lists --- */
+
+/**
+ * Every lifecycle value a lead can be moved to from the list.
+ *
+ * All six, including `lost` and `converted`. The detail page wraps those two in
+ * dialogs that collect a reason and create a student account respectively, and
+ * those flows still exist and are still the better path — but refusing the
+ * transition here would mean the column can express five-sixths of the
+ * lifecycle, which is the kind of gap that sends people back to the detail page
+ * for one click.
+ */
+const LEAD_STATUS_OPTIONS = (Object.values(LeadStatus) as LeadStatus[]).map((value) => ({
+  value,
+  label: STATUS_LABELS[value] ?? toTitleCase(value),
+}));
+
+const LEAD_PRIORITY_OPTIONS = (Object.values(LeadPriority) as LeadPriority[]).map((value) => ({
+  value,
+  label: toTitleCase(value),
+}));
+
+/**
+ * The owner cell: the assigned name, click to reassign.
+ *
+ * `UserPicker` inside a popover rather than a menu of staff, because the staff
+ * list is searched server-side and a lead desk of thirty people does not fit in
+ * a dropdown. Closes on pick, and stops the click reaching the row so
+ * reassigning does not also navigate into the record.
+ */
+function OwnerCell({
+  lead,
+  onAssign,
+  isSaving,
+}: {
+  lead: LeadRead;
+  onAssign: (userId: string) => void;
+  isSaving: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={(event) => event.stopPropagation()}
+          title="Assign this lead"
+          className="group/owner -mx-1.5 flex w-[calc(100%+0.75rem)] min-w-0 items-center gap-1 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-black/[0.045] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary dark:hover:bg-white/[0.07]"
+        >
+          <span className="min-w-0 flex-1 truncate">
+            {lead.assigned_to ? (
+              <StaffNameCell userId={lead.assigned_to} />
+            ) : (
+              <span className="text-muted-foreground">Unassigned</span>
+            )}
+          </span>
+          {isSaving && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-64 p-2"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <UserPicker
+          value={lead.assigned_to}
+          onChange={(userId) => {
+            onAssign(userId);
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
