@@ -73,6 +73,7 @@ import { LeadFollowUpTimeline } from "@/modules/leads/LeadFollowUpTimeline";
 import { LifecycleRail } from "@/components/shared/LifecycleRail";
 import { LIFECYCLE_STEPS, STEP_LABELS, lifecycleOf } from "@/modules/leads/lifecycle";
 import { LeadClientSummaryCard } from "@/modules/leads/LeadClientSummaryCard";
+import { PriorityTasksCard } from "@/modules/priority-tasks/PriorityTasksCard";
 import { LeadApplicationsTab } from "@/modules/leads/LeadApplicationsTab";
 import { ThreadPanel } from "@/modules/communication/ThreadPanel";
 import { useLeadThreads } from "@/modules/communication/hooks";
@@ -477,6 +478,10 @@ export function LeadDetailPage() {
             </div>
 
             <div className="space-y-4">
+              {/* What the student should do next — leads their dashboard's
+                  "Priority tasks". Clients only: a lead has no portal yet. */}
+              {stage === "client" && clientUserId && canManage && <PriorityTasksCard studentId={clientUserId} />}
+
               <div className="rounded-xl border border-border bg-card p-4">
                 <h2 className="mb-3 text-[13px] font-semibold text-foreground">Ownership & lifecycle</h2>
                 <div className="space-y-3 text-sm">

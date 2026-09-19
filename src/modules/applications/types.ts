@@ -19,6 +19,8 @@ export interface ApplicationRead {
   scholarship_amount: number | null;
   university_application_id: string | null;
   intake_id: string | null;
+  /** This student's mode of study; the portal falls back to the course's own. */
+  study_mode: string | null;
   remarks: string | null;
   /** Staff-set and shown to the student under "Key Deadlines". */
   application_deadline: string | null;
@@ -50,6 +52,7 @@ export type ApplicationUpdatePayload = Partial<ApplicationCreatePayload> & {
   visa_decision_date?: string | null;
   enrollment_date?: string | null;
   university_application_id?: string | null;
+  study_mode?: string | null;
   application_deadline?: string | null;
   payment_deadline?: string | null;
   condition_deadline?: string | null;

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CalendarClock, Check, FileText, Hash, Megaphone, Pencil, Phone, Plus, Ticket, UserPlus } from "lucide-react";
+import { CalendarClock, Check, FileText, Hash, Pencil, Phone, Plus, Ticket, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { APPLICATION_PHASES, applicationLifecycleOf } from "@/modules/applications/lifecycle";
 import type { ApplicationRead } from "@/modules/applications/types";
@@ -473,47 +473,27 @@ function Custody({
             "—"
           )}
         </Reference>
+        {/* The student sees these on their application page too — Key
+            Deadlines and Course Details. Edited through "Edit details". */}
+        <Reference icon={CalendarClock} label="Application deadline">
+          {application.application_deadline ? (
+            <span className="tabular-nums text-foreground">{formatDate(application.application_deadline)}</span>
+          ) : (
+            "—"
+          )}
+        </Reference>
+        <Reference icon={CalendarClock} label="Payment deadline">
+          {application.payment_deadline ? (
+            <span className="tabular-nums text-foreground">{formatDate(application.payment_deadline)}</span>
+          ) : (
+            "—"
+          )}
+        </Reference>
+        <Reference icon={CalendarClock} label="Study mode">
+          {application.study_mode ? <span className="text-foreground">{application.study_mode}</span> : "Course default"}
+        </Reference>
       </dl>
 
-      {/* What the student portal prints under "Key Deadlines" and "Please
-          note". Shown here so staff can see exactly what the student sees;
-          edited through "Edit details". */}
-      <div className="mt-4 border-t border-border pt-3">
-        <Caption>Shown to the student</Caption>
-        <dl className="mt-2 space-y-2 text-[13px]">
-          <Reference icon={CalendarClock} label="Application deadline">
-            {application.application_deadline ? (
-              <span className="tabular-nums text-foreground">{formatDate(application.application_deadline)}</span>
-            ) : (
-              "—"
-            )}
-          </Reference>
-          <Reference icon={CalendarClock} label="Payment deadline">
-            {application.payment_deadline ? (
-              <span className="tabular-nums text-foreground">{formatDate(application.payment_deadline)}</span>
-            ) : (
-              "—"
-            )}
-          </Reference>
-          <Reference icon={CalendarClock} label="Condition deadline">
-            {application.condition_deadline ? (
-              <span className="tabular-nums text-foreground">{formatDate(application.condition_deadline)}</span>
-            ) : (
-              "—"
-            )}
-          </Reference>
-        </dl>
-        {application.student_notice ? (
-          <div className="mt-3 flex gap-2 rounded-lg bg-warning/10 px-3 py-2 text-[12.5px] text-foreground">
-            <Megaphone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
-            <p className="whitespace-pre-line">{application.student_notice}</p>
-          </div>
-        ) : canManage ? (
-          <p className="mt-2 text-[12.5px] text-muted-foreground">
-            No "Please note" for the student yet — add one from Edit details.
-          </p>
-        ) : null}
-      </div>
     </div>
   );
 }
