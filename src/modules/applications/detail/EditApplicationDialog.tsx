@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ApplicationRead, ApplicationUpdatePayload } from "@/modules/applications/types";
 
@@ -18,6 +19,10 @@ import type { ApplicationRead, ApplicationUpdatePayload } from "@/modules/applic
  * Dates go out as `null` when cleared rather than `""`: the API distinguishes
  * "not set" from an empty string, and an empty string is what a date input
  * gives you when someone deletes the value.
+ *
+ * The "Shown to the student" group is what the student portal prints on the
+ * application page: the two Key Deadlines and the "Please note" box (the
+ * condition deadline plus one point per line of the notice).
  */
 
 const FIELDS = [
@@ -30,7 +35,12 @@ const FIELDS = [
   { key: "tuition_fee", label: "Tuition fee", type: "number" },
   { key: "scholarship_amount", label: "Scholarship amount", type: "number" },
   { key: "university_application_id", label: "University reference", type: "text" },
+  { key: "application_deadline", label: "Application deadline", type: "date", student: true },
+  { key: "payment_deadline", label: "Payment deadline", type: "date", student: true },
+  { key: "condition_deadline", label: "Condition deadline", type: "date", student: true },
 ] as const;
+
+const NOTICE_KEY = "student_notice";
 
 type FieldKey = (typeof FIELDS)[number]["key"];
 
@@ -58,6 +68,7 @@ export function EditApplicationDialog({
       const raw = application[field.key as keyof ApplicationRead];
       next[field.key] = raw === null || raw === undefined ? "" : String(raw).slice(0, field.type === "date" ? 10 : undefined);
     }
+    next[NOTICE_KEY] = application.student_notice ?? "";
     setValues(next);
   }, [open, application]);
 
@@ -72,18 +83,20 @@ export function EditApplicationDialog({
         (payload as Record<string, unknown>)[key] = raw === "" ? null : raw;
       }
     }
+    const notice = values[NOTICE_KEY]?.trim() ?? "";
+    payload.student_notice = notice === "" ? null : notice;
     onSave(payload);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit application</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {FIELDS.map((field) => (
+          {FIELDS.filter((field) => !("student" in field)).map((field) => (
             <div key={field.key} className="space-y-1.5">
               <Label htmlFor={field.key}>{field.label}</Label>
               <Input
@@ -96,6 +109,39 @@ export function EditApplicationDialog({
               />
             </div>
           ))}
+        </div>
+
+        <div className="space-y-3 border-t border-border pt-4">
+          <div>
+            <p className="text-[13px] font-medium text-foreground">Shown to the student</p>
+            <p className="text-[12.5px] text-muted-foreground">
+              Key Deadlines and the "Please note" box on the student's application page.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {FIELDS.filter((field) => "student" in field).map((field) => (
+              <div key={field.key} className="space-y-1.5">
+                <Label htmlFor={field.key}>{field.label}</Label>
+                <Input
+                  id={field.key}
+                  type="date"
+                  value={values[field.key] ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [field.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={NOTICE_KEY}>Please note</Label>
+            <Textarea
+              id={NOTICE_KEY}
+              rows={3}
+              maxLength={2000}
+              placeholder="One point per line, e.g. Bring your original transcript to the interview."
+              value={values[NOTICE_KEY] ?? ""}
+              onChange={(e) => setValues((v) => ({ ...v, [NOTICE_KEY]: e.target.value }))}
+            />
+          </div>
         </div>
 
         <DialogFooter>

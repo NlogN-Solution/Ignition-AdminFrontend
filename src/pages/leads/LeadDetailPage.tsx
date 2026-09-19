@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft,
@@ -56,6 +59,7 @@ import {
   useAssignLead,
   useChangeLeadStatus,
   useDeleteLead,
+  forgetLead,
   useLead,
   useLeadActivities,
   useLeadFollowUps,
@@ -129,11 +133,34 @@ export function LeadDetailPage() {
   const role = useAuthStore((s) => s.user?.role);
   const setLabel = useBreadcrumbStore((s) => s.setLabel);
 
-  const { data: lead, isLoading } = useLead(leadId);
+  const queryClient = useQueryClient();
+  const { data: lead, isLoading, error, refetch } = useLead(leadId);
   const changeStatus = useChangeLeadStatus(leadId ?? "");
   const qualifyLead = useQualifyLead(leadId ?? "");
   const assignLead = useAssignLead(leadId ?? "");
   const deleteLead = useDeleteLead();
+
+  // Set when this page deletes its own lead. The lead's cached queries are
+  // cleared on unmount rather than in the mutation, because clearing them while
+  // this page is still mounted makes its observers re-create and re-fetch them —
+  // a 404 for each.
+  const deletedLeadId = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (deletedLeadId.current) forgetLead(queryClient, deletedLeadId.current);
+    },
+    [queryClient],
+  );
+
+  // A lead that no longer exists — deleted here, deleted by someone else, or
+  // reached through Back or a stale link — sends you to the list instead of
+  // rendering a "not found" page.
+  const isGone = isAxiosError(error) && error.response?.status === 404;
+  useEffect(() => {
+    if (!isGone) return;
+    toast.info("That lead no longer exists.");
+    navigate("/leads", { replace: true });
+  }, [isGone, navigate]);
 
   const [tab, setTab] = useState("overview");
   const [assignOpen, setAssignOpen] = useState(false);
@@ -161,7 +188,7 @@ export function LeadDetailPage() {
     if (lead) setLabel(`${lead.first_name} ${lead.last_name ?? ""}`.trim());
   }, [lead, setLabel]);
 
-  if (isLoading) {
+  if (isLoading || isGone) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-64" />
@@ -174,7 +201,23 @@ export function LeadDetailPage() {
   }
 
   if (!lead) {
-    return <EmptyState icon={UserCog} title="Lead not found" description="It may have been deleted." />;
+    return (
+      <EmptyState
+        icon={UserCog}
+        title="Couldn't load this lead"
+        description="Check your connection and try again."
+        action={
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate("/leads")}>
+              Back to leads
+            </Button>
+            <Button size="sm" onClick={() => refetch()}>
+              Try again
+            </Button>
+          </div>
+        }
+      />
+    );
   }
 
   const canManage = role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN || role === UserRole.COUNSELLOR;
@@ -349,7 +392,13 @@ export function LeadDetailPage() {
                       className="text-danger focus:text-danger"
                       onSelect={() => {
                         if (confirm("Delete this lead permanently?")) {
-                          deleteLead.mutate(lead.id, { onSuccess: () => navigate("/leads") });
+                          deleteLead.mutate(lead.id, {
+                            onSuccess: () => {
+                              deletedLeadId.current = lead.id;
+                              // `replace`: Back must not return to a lead that is gone.
+                              navigate("/leads", { replace: true });
+                            },
+                          });
                         }
                       }}
                     >

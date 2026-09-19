@@ -1,8 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type Query, type QueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { queryKeys } from "@/constants/queryKeys";
 import { getErrorMessage } from "@/utils/errors";
 import type { LeadPriority } from "@/types/enums";
+import type { ListResponse } from "@/types/api";
 import { leadService } from "./service";
 import type {
   LeadConvertPayload,
@@ -11,6 +13,7 @@ import type {
   LeadFollowUpCreatePayload,
   LeadListParams,
   LeadMarkLostPayload,
+  LeadRead,
   LeadUpdatePayload,
 } from "./types";
 
@@ -27,6 +30,8 @@ export function useLead(id: string | undefined) {
     queryKey: queryKeys.leads.detail(id ?? ""),
     queryFn: () => leadService.get(id as string),
     enabled: Boolean(id),
+    // A 404 is an answer, not a blip: retrying it only delays the redirect.
+    retry: (failureCount, error) => !(isAxiosError(error) && error.response?.status === 404) && failureCount < 1,
   });
 }
 
@@ -130,12 +135,49 @@ export function useConvertLead(id: string) {
   });
 }
 
+/** Every cached query that is *about* one lead: its detail, activities, follow-ups, threads. */
+const isAboutLead = (id: string) => (query: Query) => query.queryKey.includes(id);
+
+/**
+ * Forget a deleted lead entirely. Call it once nothing on screen is reading the
+ * lead any more — i.e. after navigating away from its page — so no mounted
+ * observer re-creates the query and fetches it again.
+ */
+export function forgetLead(queryClient: QueryClient, id: string) {
+  queryClient.removeQueries({ predicate: isAboutLead(id) });
+}
+
+/**
+ * Delete a lead.
+ *
+ * This used to invalidate everything under `["leads"]` — which includes the
+ * deleted lead's own detail, activities and follow-ups. While its page was
+ * still mounted, that fired a GET for each of them against a row that no longer
+ * existed, and every one came back 404. So on success this:
+ *
+ *   - drops the lead from every cached list page straight away, so it leaves
+ *     the table without waiting for a refetch;
+ *   - cancels anything in flight for that lead, and refreshes every other
+ *     lead query (lists, due follow-ups, counts) — but never the lead's own,
+ *     which only has one possible answer now.
+ *
+ * The page that was showing the lead navigates away and then calls
+ * `forgetLead` to clear what is left of it from the cache.
+ */
 export function useDeleteLead() {
-  const invalidate = useInvalidateLeads();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => leadService.remove(id),
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async (_deleted, id) => {
+      await queryClient.cancelQueries({ predicate: isAboutLead(id) });
+      queryClient.setQueriesData<ListResponse<LeadRead>>({ queryKey: ["leads", "list"] }, (page) =>
+        page && page.items.some((lead) => lead.id === id)
+          ? { ...page, items: page.items.filter((lead) => lead.id !== id), total: Math.max(0, page.total - 1) }
+          : page,
+      );
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "leads" && !query.queryKey.includes(id),
+      });
       toast.success("Lead deleted");
     },
     onError: (error) => toast.error(getErrorMessage(error, "Couldn't delete lead")),

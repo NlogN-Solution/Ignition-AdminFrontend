@@ -20,6 +20,13 @@ export interface ApplicationRead {
   university_application_id: string | null;
   intake_id: string | null;
   remarks: string | null;
+  /** Staff-set and shown to the student under "Key Deadlines". */
+  application_deadline: string | null;
+  payment_deadline: string | null;
+  /** The date an offer's conditions must be met by — the student's "Please note". */
+  condition_deadline: string | null;
+  /** Staff-written, student-facing notice; one point per line. */
+  student_notice: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +50,10 @@ export type ApplicationUpdatePayload = Partial<ApplicationCreatePayload> & {
   visa_decision_date?: string | null;
   enrollment_date?: string | null;
   university_application_id?: string | null;
+  application_deadline?: string | null;
+  payment_deadline?: string | null;
+  condition_deadline?: string | null;
+  student_notice?: string | null;
 };
 
 export interface ApplicationListParams {
