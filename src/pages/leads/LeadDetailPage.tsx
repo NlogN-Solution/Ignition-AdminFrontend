@@ -140,6 +140,7 @@ export function LeadDetailPage() {
   const qualifyLead = useQualifyLead(leadId ?? "");
   const assignLead = useAssignLead(leadId ?? "");
   const deleteLead = useDeleteLead();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // Set when this page deletes its own lead. The lead's cached queries are
   // cleared on unmount rather than in the mutation, because clearing them while
@@ -391,17 +392,7 @@ export function LeadDetailPage() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-danger focus:text-danger"
-                      onSelect={() => {
-                        if (confirm("Delete this lead permanently?")) {
-                          deleteLead.mutate(lead.id, {
-                            onSuccess: () => {
-                              deletedLeadId.current = lead.id;
-                              // `replace`: Back must not return to a lead that is gone.
-                              navigate("/leads", { replace: true });
-                            },
-                          });
-                        }
-                      }}
+                      onSelect={() => setConfirmingDelete(true)}
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Delete lead
                     </DropdownMenuItem>
@@ -631,6 +622,45 @@ export function LeadDetailPage() {
           />
         </>
       )}
+
+      {/* A real dialog rather than `confirm()`, and wording that matches what
+          the button now does: the backend soft-deletes, so the record and its
+          history survive — which is the difference between "are you sure" and
+          a warning nobody can act on. */}
+      <Dialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Delete {lead.first_name} {lead.last_name ?? ""}?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            The lead is removed from the pipeline and stops appearing in any list or search. Its
+            activity log and follow-ups are kept, so the record of what was said is still there if
+            anyone asks — an administrator can restore it.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={deleteLead.isPending}
+              onClick={() =>
+                deleteLead.mutate(lead.id, {
+                  onSuccess: () => {
+                    deletedLeadId.current = lead.id;
+                    // `replace`: Back must not return to a lead that is gone.
+                    navigate("/leads", { replace: true });
+                  },
+                })
+              }
+            >
+              {deleteLead.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Delete lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -12,7 +12,6 @@ import {
   UserPlus,
   CheckSquare,
   CalendarPlus,
-  Wallet,
   ChevronDown,
   Check,
 } from "lucide-react";
@@ -111,9 +110,6 @@ export function Topbar() {
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => navigate("/appointments?new=1")}>
                 <CalendarPlus className="h-4 w-4" /> Book appointment
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => navigate("/payments?new=1")}>
-                <Wallet className="h-4 w-4" /> Record payment
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

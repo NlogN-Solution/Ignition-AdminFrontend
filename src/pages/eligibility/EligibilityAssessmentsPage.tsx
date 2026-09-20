@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDebounce } from "@/hooks/useDebounce";
 import { OverallBadge, ReadinessBar } from "@/modules/eligibility/badges";
 import { useEligibilityAssessments, useEligibilityStats } from "@/modules/eligibility/hooks";
+import { assessmentReference } from "@/modules/eligibility/reference";
 import type { EligibilityAssessmentRead } from "@/modules/eligibility/types";
 import { UserRole } from "@/types/enums";
 import { formatDate } from "@/utils/format";
@@ -50,6 +51,20 @@ export function EligibilityAssessmentsPage() {
 
   const columns = useMemo<ColumnDef<EligibilityAssessmentRead, unknown>[]>(
     () => [
+      {
+        id: "reference",
+        header: "Reference",
+        size: 110,
+        // The number the student was given on the confirmation screen, and the
+        // one they read out when they ring. It leads because matching a caller
+        // to a row is the commonest reason to have this list open with the
+        // phone in your other hand.
+        cell: ({ row }) => (
+          <span className="font-mono text-[13px] font-medium tracking-tight">
+            {assessmentReference(row.original.id)}
+          </span>
+        ),
+      },
       {
         id: "student",
         header: "Student",
@@ -148,7 +163,7 @@ export function EligibilityAssessmentsPage() {
           setSearch(value);
           setPage(1);
         }}
-        searchPlaceholder="Search name, email, phone or course…"
+        searchPlaceholder="Search reference, name, email, phone or course…"
         filters={
           <>
             <Filter value={overall} onChange={setOverall} placeholder="Assessment" width={160}>

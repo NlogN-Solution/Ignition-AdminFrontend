@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { UserPicker } from "@/components/shared/UserPicker";
+import { StaffPicker } from "@/modules/people/StaffPicker";
 import { StaffNameCell } from "@/modules/users/StaffNameCell";
 import { useAddStepComment, useUpdateWorkflowStep, useWorkflowStepActivities } from "./hooks";
 import { stepTimestampTitle } from "./JourneyTimeline";
@@ -76,7 +76,7 @@ export function StepDetailSheet({
             <div>
               <p className="text-[11px] text-muted-foreground">Assigned to</p>
               <div className="mt-1">
-                <UserPicker
+                <StaffPicker
                   value={step.assigned_to}
                   onChange={(userId) => updateStep.mutate({ stepId: step.id, payload: { assigned_to: userId } })}
                   placeholder="Unassigned"

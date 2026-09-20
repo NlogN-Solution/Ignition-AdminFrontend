@@ -138,6 +138,19 @@ export function useCreateIntake() {
   });
 }
 
+export function useUpdateIntake() {
+  const invalidate = useInvalidateAcademic("intakes");
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<IntakePayload> }) =>
+      academicService.intakes.update(id, payload),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Intake saved");
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+}
+
 export function useDeleteCountry() {
   const invalidate = useInvalidateAcademic("countries");
   return useMutation({

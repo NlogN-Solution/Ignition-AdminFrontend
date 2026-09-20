@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { RequirementsMatrix } from "./RequirementsMatrix";
+import { UniversityCoursesTab } from "./UniversityCoursesTab";
 import { useUpdateWebsiteUniversity } from "./hooks";
 import { UK_REGIONS, type WebsiteUniversity, type WebsiteUniversityPayload } from "./types";
 
@@ -410,8 +411,9 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
   return (
     <div>
       <p className="mb-4 text-xs text-muted-foreground">
-        Tabs mirror the public page&rsquo;s own sections. A grey dot means the section is empty &mdash; and an
-        empty section is one the live page does not render at all.
+        Tabs mirror the public page&rsquo;s own sections, plus Courses, which lists what this university
+        offers. A grey dot means the section is empty &mdash; and an empty section is one the live page does
+        not render at all.
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -419,6 +421,7 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
             <TabsList className="flex w-full flex-wrap">
               <TabsTrigger value="identity"><TabLabel label="Identity" complete={completeness.identity} /></TabsTrigger>
               <TabsTrigger value="overview"><TabLabel label="Overview" complete={completeness.overview} /></TabsTrigger>
+              <TabsTrigger value="courses">Courses</TabsTrigger>
               <TabsTrigger value="money"><TabLabel label="Money" complete={completeness.money} /></TabsTrigger>
               <TabsTrigger value="entry"><TabLabel label="Entry" complete={completeness.entry} /></TabsTrigger>
               <TabsTrigger value="routes">Routes</TabsTrigger>
@@ -471,6 +474,15 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
               </Field>
               <Field label="Student experience"><Textarea rows={4} {...register("student_experience")} /></Field>
               <Field label="Careers"><Textarea rows={4} {...register("careers_text")} /></Field>
+            </TabsContent>
+
+            {/* Not a field group — the courses this university offers, which is
+                the one thing about a university record you cannot read off the
+                university row. Sits next to Overview because it is what people
+                come here to look up, and it is read-only on purpose: a row
+                opens the course's own editor. */}
+            <TabsContent value="courses" className="pt-4">
+              <UniversityCoursesTab universityId={university.id} />
             </TabsContent>
 
             <TabsContent value="money" className="space-y-4 pt-4">

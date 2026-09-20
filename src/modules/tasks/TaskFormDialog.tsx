@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPicker } from "@/components/shared/UserPicker";
+import { StaffPicker } from "@/modules/people/StaffPicker";
 import { TaskPriority, TaskType } from "@/types/enums";
 import { toTitleCase } from "@/utils/format";
 import { useAuthStore } from "@/services/authStore";
@@ -96,8 +96,24 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           </div>
 
           <div className="space-y-1.5">
-            <Label>Assign to</Label>
-            <UserPicker value={assignedTo} onChange={setAssignedTo} placeholder="Select a person…" />
+            <div className="flex items-center justify-between">
+              <Label>Assign to</Label>
+              {currentUser && assignedTo !== currentUser.id && (
+                <button
+                  type="button"
+                  onClick={() => setAssignedTo(currentUser.id)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Assign to me
+                </button>
+              )}
+            </div>
+            {/* Colleagues, not applicants. This was a plain user picker, which
+                lists every account — and for a counsellor the backend pins
+                `GET /users` to students, so the one role that files most tasks
+                could only assign them to applicants. A task is internal work;
+                the directory behind this is staff-only. */}
+            <StaffPicker value={assignedTo} onChange={setAssignedTo} placeholder="Select a colleague…" />
           </div>
 
           <div className="space-y-1.5">

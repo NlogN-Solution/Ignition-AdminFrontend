@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router";
 import { motion } from "motion/react";
 import { ChevronsLeft, ChevronsRight, Lock, Pin } from "lucide-react";
-import { NAV_GROUPS, ALL_NAV_ITEMS } from "@/constants/navigation";
+import { VISIBLE_NAV_GROUPS, VISIBLE_NAV_ITEMS } from "@/constants/navigation";
 import { canAccessModule, isComingSoon } from "@/constants/permissions";
 import { useAuthStore } from "@/services/authStore";
 import { useUIStore } from "@/hooks/useUIStore";
@@ -98,7 +98,7 @@ export function Sidebar() {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const pinnedPaths = useUIStore((s) => s.pinnedPaths);
 
-  const pinnedItems = ALL_NAV_ITEMS.filter((item) => pinnedPaths.includes(item.path));
+  const pinnedItems = VISIBLE_NAV_ITEMS.filter((item) => pinnedPaths.includes(item.path));
 
   return (
     <aside
@@ -125,7 +125,7 @@ export function Sidebar() {
           </div>
         )}
 
-        {NAV_GROUPS.map((group) => {
+        {VISIBLE_NAV_GROUPS.map((group) => {
           const items = group.items.filter((item) =>
             canAccessModule(role, item.module),
           );

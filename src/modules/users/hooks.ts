@@ -30,10 +30,16 @@ export function useStaffDirectory(params: StaffDirectoryParams) {
   });
 }
 
-export function useUser(id: string | undefined) {
+/**
+ * `includeDeleted` is for screens that name a *record*, not an account:
+ * an application outlives the student who was soft-deleted, and the row still
+ * has to say whose it is. Everything that edits or acts on a user leaves it
+ * off, and gets the 404 it should.
+ */
+export function useUser(id: string | undefined, { includeDeleted = false } = {}) {
   return useQuery({
-    queryKey: queryKeys.users.detail(id ?? ""),
-    queryFn: () => userService.get(id as string),
+    queryKey: includeDeleted ? queryKeys.users.detailWithDeleted(id ?? "") : queryKeys.users.detail(id ?? ""),
+    queryFn: () => userService.get(id as string, includeDeleted),
     enabled: Boolean(id),
   });
 }

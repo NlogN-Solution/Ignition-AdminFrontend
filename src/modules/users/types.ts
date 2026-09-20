@@ -16,6 +16,8 @@ export interface UserRead {
   has_portal_access: boolean;
   created_at: string;
   updated_at: string;
+  /** Only ever set when the row was fetched with `includeDeleted` — see `userService.get`. */
+  deleted_at?: string | null;
 }
 
 export interface UserSelfUpdatePayload {

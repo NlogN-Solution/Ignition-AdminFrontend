@@ -15,7 +15,7 @@ import { useUIStore } from "@/hooks/useUIStore";
 import { useThemeStore } from "@/hooks/useTheme";
 import { useAuthStore } from "@/services/authStore";
 import { canAccessModule } from "@/constants/permissions";
-import { NAV_GROUPS } from "@/constants/navigation";
+import { VISIBLE_NAV_GROUPS } from "@/constants/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import { apiClient } from "@/services/apiClient";
 import type { ListResponse } from "@/types/api";
@@ -99,16 +99,12 @@ export function CommandPalette() {
               <Plus className="text-muted-foreground" />
               Book appointment
             </CommandItem>
-            <CommandItem onSelect={() => go("/payments?new=1")}>
-              <Plus className="text-muted-foreground" />
-              Record payment
-            </CommandItem>
           </CommandGroup>
         )}
 
         <CommandSeparator />
 
-        {NAV_GROUPS.map((group) => {
+        {VISIBLE_NAV_GROUPS.map((group) => {
           const items = group.items.filter((item) =>
             canAccessModule(role, item.module),
           );

@@ -66,6 +66,8 @@ export interface ApplicationListParams {
   counsellor_id?: string;
   program_id?: string;
   status?: ApplicationStatus;
+  /** Applicant name or email, course, university, or the IGN- reference. */
+  search?: string;
 }
 
 export interface ApplicationStatusHistoryRead {

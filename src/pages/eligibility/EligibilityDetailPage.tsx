@@ -26,6 +26,7 @@ import { UserPicker } from "@/components/shared/UserPicker";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ApplicationFormDialog } from "@/modules/applications/ApplicationFormDialog";
 import { IndicatorRow, OverallBadge, ReadinessBar } from "@/modules/eligibility/badges";
+import { assessmentReference } from "@/modules/eligibility/reference";
 import { useEligibilityAssessment } from "@/modules/eligibility/hooks";
 import {
   DOCUMENT_ITEMS,
@@ -132,6 +133,13 @@ export function EligibilityDetailPage() {
             <OverallBadge status={assessment.overall_status} />
           </div>
           <p className="mt-0.5 text-sm text-muted-foreground">
+            {/* The reference the student was handed on the confirmation screen.
+                It is here so a counsellor taking the call can say "yes, I have
+                28C7D3CD in front of me" without having to trust that the name
+                matches — the public form verifies nothing, and two people
+                called Suresh Shrestha is not a rare event. */}
+            <span className="font-mono text-foreground">{assessmentReference(assessment.id)}</span>
+            {" · "}
             {assessment.preferred_course ?? "Course not specified"}
             {assessment.study_level ? ` · ${assessment.study_level}` : ""} · Submitted{" "}
             {formatDateTime(assessment.submitted_at)}

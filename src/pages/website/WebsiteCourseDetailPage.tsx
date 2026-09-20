@@ -30,6 +30,7 @@ import {
   useWebsiteUniversities,
 } from "@/modules/website/hooks";
 import { COURSE_LEVELS, COURSE_SUBJECTS, type WebsiteProgramPayload } from "@/modules/website/types";
+import { CourseIntakes } from "@/modules/academic/CourseIntakes";
 
 /**
  * One offering, viewed and edited on its own page.
@@ -93,13 +94,21 @@ export function WebsiteCourseDetailPage() {
 
   return (
     <div>
+      {/* Back to the university, not to the flat course list: the list is no
+          longer on the sidebar, and the university's Courses tab is where this
+          course was opened from. */}
       <Button
         variant="ghost"
         size="sm"
         className="mb-3 -ml-2 gap-1.5 text-muted-foreground"
-        onClick={() => navigate("/website/courses")}
+        onClick={() =>
+          navigate(
+            course.university_id ? `/website/universities/${course.university_id}` : "/website/courses",
+          )
+        }
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to courses
+        <ArrowLeft className="h-3.5 w-3.5" />
+        {university ? `Back to ${university.name}` : "Back to courses"}
       </Button>
 
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
@@ -210,6 +219,11 @@ export function WebsiteCourseDetailPage() {
             </Field>
           </div>
         </section>
+
+        {/* Its own section, and its own save: intakes are separate rows with
+            their own endpoints, so they are written when you press the button
+            in their dialog rather than waiting on this page's Save. */}
+        <CourseIntakes programId={course.id} />
 
         <section className="rounded-xl border border-border bg-card p-4">
           <h2 className="mb-3 text-[13px] font-semibold text-foreground">Visibility</h2>

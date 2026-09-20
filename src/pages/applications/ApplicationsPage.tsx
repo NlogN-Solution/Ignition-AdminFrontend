@@ -11,6 +11,7 @@ import { InlineSelectCell } from "@/components/shared/InlineSelectCell";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQueryFlagDialog } from "@/hooks/useQueryFlagDialog";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useApplications,
   useChangeApplicationStatusById,
@@ -62,6 +63,8 @@ export function ApplicationsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const canManage = isManagerRole(role) || role === UserRole.COUNSELLOR;
   const [status, setStatus] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useQueryFlagDialog();
 
@@ -78,8 +81,13 @@ export function ApplicationsPage() {
   const assignAdvisor = useUpdateApplication(assignTarget?.id ?? "");
 
   const params = useMemo(
-    () => ({ page, limit: 20, status: status === "all" ? undefined : (status as ApplicationStatus) }),
-    [page, status],
+    () => ({
+      page,
+      limit: 20,
+      status: status === "all" ? undefined : (status as ApplicationStatus),
+      search: debouncedSearch || undefined,
+    }),
+    [page, status, debouncedSearch],
   );
   const { data, isLoading } = useApplications(params);
 
@@ -270,6 +278,12 @@ export function ApplicationsPage() {
 
       <div className="mb-3">
         <ListToolbar
+          searchValue={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+          searchPlaceholder="Search applicant, course, university or IGN- reference…"
           filters={
             <Select
               value={status}

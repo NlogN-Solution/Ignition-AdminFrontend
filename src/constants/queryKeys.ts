@@ -7,6 +7,9 @@ export const queryKeys = {
     all: ["users"] as const,
     list: (params: unknown) => ["users", "list", params] as const,
     detail: (id: string) => ["users", "detail", id] as const,
+    // Separate entry, because the two requests can return different rows:
+    // one 404s on a soft-deleted account and the other resolves it.
+    detailWithDeleted: (id: string) => ["users", "detail", id, "with-deleted"] as const,
   },
   studentProfile: {
     detail: (userId: string) => ["student-profile", userId] as const,

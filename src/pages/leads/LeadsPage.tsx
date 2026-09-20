@@ -10,7 +10,7 @@ import { DataTable } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LifecycleRail } from "@/components/shared/LifecycleRail";
 import { InlineSelectCell } from "@/components/shared/InlineSelectCell";
-import { UserPicker } from "@/components/shared/UserPicker";
+import { StaffPicker } from "@/modules/people/StaffPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -540,7 +540,7 @@ function BulkAssignForm({ onSubmit }: { onSubmit: (userId: string) => void }) {
     <>
       <div className="space-y-1.5">
         <Label>Counsellor</Label>
-        <UserPicker value={userId} onChange={setUserId} placeholder="Select counsellor…" />
+        <StaffPicker value={userId} onChange={setUserId} placeholder="Select counsellor…" />
       </div>
       <DialogFooter>
         <Button disabled={!userId} onClick={() => userId && onSubmit(userId)}>
@@ -693,9 +693,10 @@ function OwnerCell({
         className="w-64 p-2"
         onClick={(event) => event.stopPropagation()}
       >
-        <UserPicker
+        <StaffPicker
           value={lead.assigned_to}
           onChange={(userId) => {
+            if (!userId) return;
             onAssign(userId);
             setOpen(false);
           }}

@@ -6,6 +6,7 @@ import { StudentDetailsCard } from "@/modules/profile/StudentDetailsCard";
 import { EducationHistoryCard } from "@/modules/profile/EducationHistoryCard";
 import { WorkExperienceCard } from "@/modules/profile/WorkExperienceCard";
 import { DocumentExtractionCard } from "@/modules/profile/DocumentExtractionCard";
+import { SecurityCard } from "@/modules/profile/SecurityCard";
 import { useAuthStore } from "@/services/authStore";
 import { UserRole } from "@/types/enums";
 import { toTitleCase } from "@/utils/format";
@@ -34,6 +35,8 @@ export function SettingsPage() {
               <DocumentExtractionCard userId={user.id} />
             </>
           )}
+
+          <SecurityCard />
         </div>
 
         <div className="space-y-4">

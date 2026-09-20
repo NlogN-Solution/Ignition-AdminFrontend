@@ -32,8 +32,19 @@ export const userService = {
     return data.items;
   },
 
-  async get(id: string): Promise<UserRead> {
-    const { data } = await apiClient.get<UserRead>(`/users/${id}`);
+  /**
+   * `includeDeleted` resolves a name on a record that outlived its account.
+   *
+   * Deleting a student is a soft delete and does not delete their
+   * applications, documents or appointments, so a staff list that resolves the
+   * applicant through here would otherwise render a removed student as a raw
+   * id fragment. Read-only, and the response carries `deleted_at` so the caller
+   * can say the account is gone.
+   */
+  async get(id: string, includeDeleted = false): Promise<UserRead> {
+    const { data } = await apiClient.get<UserRead>(`/users/${id}`, {
+      params: includeDeleted ? { include_deleted: true } : undefined,
+    });
     return data;
   },
 

@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { FileText } from "lucide-react";
@@ -111,6 +114,7 @@ export function ApplicationDetailPage() {
   const requirements = statusRequirements ?? [];
   const updateApplication = useUpdateApplication(applicationId ?? "");
   const deleteApplication = useDeleteApplication();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -199,11 +203,7 @@ export function ApplicationDetailPage() {
             () => toast.error("Couldn't copy to the clipboard"),
           );
         }}
-        onDelete={() => {
-          if (confirm("Delete this application permanently? This cannot be undone.")) {
-            deleteApplication.mutate(application.id, { onSuccess: () => navigate("/applications") });
-          }
-        }}
+        onDelete={() => setConfirmingDelete(true)}
       />
 
       {/* Sections and content. Two tracks from `lg`, stacked below it — the
@@ -354,6 +354,38 @@ export function ApplicationDetailPage() {
           updateApplication.mutate({ counsellor_id: userId }, { onSuccess: () => setAssignOpen(false) })
         }
       />
+
+      {/* Wording matched to what the backend now does. It used to say "this
+          cannot be undone", which was true of the old cascading delete and is
+          no longer true — and a warning that overstates the damage is one
+          people learn to click through. */}
+      <Dialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {applicationRef}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            The application is removed from the console and from the student&rsquo;s portal. Its
+            status history, documents and payments are kept — an administrator can restore it.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmingDelete(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={deleteApplication.isPending}
+              onClick={() =>
+                deleteApplication.mutate(application.id, {
+                  onSuccess: () => navigate("/applications", { replace: true }),
+                })
+              }
+            >
+              {deleteApplication.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Delete application
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

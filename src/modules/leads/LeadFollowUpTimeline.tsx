@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserPicker } from "@/components/shared/UserPicker";
+import { StaffPicker } from "@/modules/people/StaffPicker";
 import { StaffNameCell } from "@/modules/users/StaffNameCell";
 import { FollowUpMethod, FollowUpOutcome } from "@/types/enums";
 import { formatDateTime, toTitleCase } from "@/utils/format";
@@ -169,7 +169,7 @@ function ScheduleFollowUpDialog({ leadId, open, onOpenChange }: { leadId: string
           </div>
           <div className="space-y-1.5">
             <Label>Counsellor</Label>
-            <UserPicker value={counsellorId} onChange={setCounsellorId} placeholder="Defaults to you" />
+            <StaffPicker value={counsellorId} onChange={setCounsellorId} placeholder="Defaults to you" />
           </div>
           <div className="space-y-1.5">
             <Label>Notes</Label>

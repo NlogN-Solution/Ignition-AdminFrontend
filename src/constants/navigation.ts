@@ -43,6 +43,18 @@ export interface NavItem {
   icon: LucideIcon;
   module: ModuleKey;
   end?: boolean;
+  /**
+   * Kept off the sidebar and the command palette, but still a real entry.
+   *
+   * The route stays registered, the API is untouched, breadcrumbs still name
+   * the page and the roles matrix still lists its module — a hidden item is
+   * one we have decided not to *advertise*, not one we have deleted. Deleting
+   * the entry instead would silently drop the module from
+   * `RolesPermissionsPage`, which reads `ALL_NAV_ITEMS`, and leave anyone
+   * landing on the path by link or bookmark with a breadcrumb that says
+   * nothing.
+   */
+  hidden?: boolean;
 }
 
 export interface NavGroup {
@@ -67,7 +79,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       { label: "Documents", path: "/documents", icon: FileText, module: "documents" },
-      { label: "Payments", path: "/payments", icon: Wallet, module: "payments" },
+      { label: "Payments", path: "/payments", icon: Wallet, module: "payments", hidden: true },
       { label: "Tasks", path: "/tasks", icon: CheckSquare, module: "tasks" },
     ],
   },
@@ -75,11 +87,14 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Website",
     items: [
       { label: "Eligibility", path: "/eligibility", icon: ClipboardCheck, module: "eligibility" },
-      { label: "Universities", path: "/website/universities", icon: Building2, module: "website" },
-      { label: "Courses", path: "/website/courses", icon: BookOpen, module: "website" },
-      { label: "Countries", path: "/website/countries", icon: Globe2, module: "academic" },
+      // One entry, because a course is only ever reached through the
+      // university that offers it — the detail page's Courses tab is the list
+      // that used to live at /website/courses.
+      { label: "Universities & Courses", path: "/website/universities", icon: Building2, module: "website" },
+      { label: "Courses", path: "/website/courses", icon: BookOpen, module: "website", hidden: true },
+      { label: "Countries", path: "/website/countries", icon: Globe2, module: "academic", hidden: true },
       { label: "Scholarships", path: "/website/scholarships", icon: Award, module: "website" },
-      { label: "Pages", path: "/website/pages", icon: FileText, module: "website" },
+      { label: "Pages", path: "/website/pages", icon: FileText, module: "website", hidden: true },
       { label: "Guides", path: "/website/guides", icon: BookMarked, module: "website" },
       { label: "Blog", path: "/website/blog", icon: Newspaper, module: "website" },
       { label: "Media", path: "/website/media", icon: Image, module: "website" },
@@ -124,3 +139,11 @@ export const NAV_GROUPS: NavGroup[] = [
 ];
 
 export const ALL_NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+
+/** What the sidebar and the command palette offer: everything not hidden. */
+export const VISIBLE_NAV_GROUPS: NavGroup[] = NAV_GROUPS.map((group) => ({
+  ...group,
+  items: group.items.filter((item) => !item.hidden),
+})).filter((group) => group.items.length > 0);
+
+export const VISIBLE_NAV_ITEMS: NavItem[] = VISIBLE_NAV_GROUPS.flatMap((g) => g.items);

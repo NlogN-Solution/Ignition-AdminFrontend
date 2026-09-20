@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { UserPicker } from "@/components/shared/UserPicker";
+import { StaffPicker } from "@/modules/people/StaffPicker";
 import { useAuthStore } from "@/services/authStore";
 import { canManageTarget } from "@/constants/permissions";
 import { UserRole, UserStatus } from "@/types/enums";
@@ -161,7 +161,12 @@ export function UserFormSheet({ user, open, onOpenChange }: { user: UserRead | n
               </div>
               <div className="space-y-1.5">
                 <Label>Reporting manager</Label>
-                <UserPicker value={managerId} onChange={setManagerId} placeholder="Select a manager…" />
+                <StaffPicker
+                  value={managerId}
+                  // StaffPicker can clear its selection; this field stores null for "no manager".
+                  onChange={(userId) => setManagerId(userId ?? null)}
+                  placeholder="Select a manager…"
+                />
               </div>
             </>
           )}
