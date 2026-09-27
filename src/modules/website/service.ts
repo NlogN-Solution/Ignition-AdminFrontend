@@ -48,6 +48,8 @@ export const websiteService = {
       params: ListParams & { university_id?: string; degree_level?: string; is_active?: boolean } = {},
     ) => (await apiClient.get<ListResponse<WebsiteProgram>>("/programs", { params })).data,
     get: async (id: string) => (await apiClient.get<WebsiteProgram>(`/programs/${id}`)).data,
+    create: async (payload: WebsiteProgramPayload & { university_id: string; name: string }) =>
+      (await apiClient.post<WebsiteProgram>("/programs", payload)).data,
     update: async (id: string, payload: WebsiteProgramPayload) =>
       (await apiClient.patch<WebsiteProgram>(`/programs/${id}`, payload)).data,
     remove: async (id: string) => (await apiClient.delete<WebsiteProgram>(`/programs/${id}`)).data,

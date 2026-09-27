@@ -70,7 +70,7 @@ export function QuickActionsBar() {
     { label: "Add application", icon: FilePlus2, onClick: () => setDialog("application") },
     // Communication is a screen, not a dialog — composing a message needs a
     // thread to compose it into, and picking one is the first step.
-    { label: "Send email", icon: Mail, onClick: () => navigate("/communication") },
+    { label: "Send Message", icon: Mail, onClick: () => navigate("/communication") },
     { label: "Schedule call", icon: CalendarPlus, onClick: () => setDialog("appointment") },
     { label: "Upload document", icon: Upload, onClick: () => setDialog("document") },
   ];

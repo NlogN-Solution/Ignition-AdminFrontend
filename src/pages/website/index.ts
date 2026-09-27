@@ -1,5 +1,6 @@
 export { WebsiteUniversitiesPage } from "./WebsiteUniversitiesPage";
 export { WebsiteUniversityDetailPage } from "./WebsiteUniversityDetailPage";
+export { WebsiteUniversityNewPage } from "./WebsiteUniversityNewPage";
 export { WebsiteCoursesPage } from "./WebsiteCoursesPage";
 export { WebsiteCourseDetailPage } from "./WebsiteCourseDetailPage";
 export { WebsiteCountriesPage } from "./WebsiteCountriesPage";

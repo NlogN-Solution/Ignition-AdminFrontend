@@ -156,6 +156,19 @@ export function useDeleteWebsiteCourse() {
   });
 }
 
+export function useCreateWebsiteCourse() {
+  const invalidate = useInvalidate([queryKeys.website.all, ["academic"]]);
+  return useMutation({
+    mutationFn: (payload: WebsiteProgramPayload & { university_id: string; name: string }) =>
+      websiteService.courses.create(payload),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Course added");
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+}
+
 export function useUpdateWebsiteCourse() {
   const invalidate = useInvalidate([queryKeys.website.all]);
   return useMutation({

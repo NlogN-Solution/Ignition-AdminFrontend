@@ -1,3 +1,24 @@
+# Ignition admin console
+
+## Deploying on Render (static site) — required rewrite rule
+
+This is a single-page app: every route (`/leads/<id>`, `/appointments`, …) is
+drawn by React Router from `index.html`. Render serves files, so reloading or
+opening a deep link asks for a file that does not exist and Render answers
+**Not Found**. The site must rewrite every path to `index.html`:
+
+Render dashboard → the admin static site → **Redirects/Rewrites** → Add rule
+
+| Source | Destination   | Action  |
+| ------ | ------------- | ------- |
+| `/*`   | `/index.html` | Rewrite |
+
+Rewrite, not Redirect — the address bar must keep the original path. Real
+files (JS, CSS, images under `/assets`) are still served first; the rule only
+applies when no file matches.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.

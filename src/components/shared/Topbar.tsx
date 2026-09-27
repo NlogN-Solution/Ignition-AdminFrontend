@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Search,
@@ -30,7 +31,7 @@ import { useUIStore } from "@/hooks/useUIStore";
 import { useThemeStore } from "@/hooks/useTheme";
 import { useAuthStore } from "@/services/authStore";
 import { useLogout } from "@/hooks/useAuth";
-import { useNotifications, useMarkNotificationRead } from "@/modules/notifications/hooks";
+import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/modules/notifications/hooks";
 import { useMessageThreads } from "@/modules/messages/hooks";
 import { useDueFollowUps } from "@/modules/leads/hooks";
 import { initials, formatRelativeTime } from "@/utils/format";
@@ -65,9 +66,26 @@ export function Topbar() {
   const logout = useLogout();
   const navigate = useNavigate();
 
-  const { data } = useNotifications({ limit: 8 }, { refetchInterval: 30_000 });
+  const { data } = useNotifications({ limit: 8 }, { refetchInterval: 15_000 });
   const markRead = useMarkNotificationRead();
-  const unreadCount = data?.items.filter((n) => !n.is_read).length ?? 0;
+  const markAllRead = useMarkAllNotificationsRead();
+  // The badge counts every unread notification, not just the eight loaded
+  // into the dropdown.
+  const { data: unread } = useNotifications({ is_read: false, limit: 1 }, { refetchInterval: 15_000 });
+  const unreadCount = unread?.total ?? 0;
+  // Opening the bell marks everything read, so the badge clears on click. The
+  // ids that were unread at that moment keep their dot until it closes,
+  // so it is still clear which ones are new.
+  const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
+  const onBellOpenChange = (open: boolean) => {
+    if (!open) {
+      setFreshIds(new Set());
+      return;
+    }
+    const fresh = new Set((data?.items ?? []).filter((n) => !n.is_read).map((n) => n.id));
+    setFreshIds(fresh);
+    if (unreadCount > 0) markAllRead.mutate();
+  };
 
   const { data: threads } = useMessageThreads({ refetchInterval: 30_000 });
   const unreadMessageCount = threads?.reduce((sum, t) => sum + t.unread_count, 0) ?? 0;
@@ -115,9 +133,9 @@ export function Topbar() {
           </DropdownMenu>
         )}
 
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={onBellOpenChange}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-8 w-8">
+            <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="Notifications">
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
                 <span className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-danger text-[9px] font-medium text-white shadow-[var(--shadow-1)]">
@@ -152,13 +170,18 @@ export function Topbar() {
                       "flex w-full items-start gap-2.5 border-b border-border/50 px-3.5 py-2.5 text-left transition-colors duration-150 last:border-none hover:bg-black/[0.03] dark:hover:bg-white/[0.05]",
                     )}
                   >
-                    <span className={cn("mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", n.is_read ? "bg-transparent" : "bg-primary")} />
+                    <span
+                      className={cn(
+                        "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                        !n.is_read || freshIds.has(n.id) ? "bg-primary" : "bg-transparent",
+                      )}
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-medium text-foreground">{n.title}</p>
                       <p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground/70">{formatRelativeTime(n.created_at)}</p>
                     </div>
-                    {n.is_read && <Check className="mt-1 h-3 w-3 shrink-0 text-muted-foreground/50" />}
+                    {n.is_read && !freshIds.has(n.id) && <Check className="mt-1 h-3 w-3 shrink-0 text-muted-foreground/50" />}
                   </button>
                 ))
               )}

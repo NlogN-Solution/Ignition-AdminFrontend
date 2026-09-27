@@ -34,7 +34,7 @@ import { StaffNameCell } from "@/modules/users/StaffNameCell";
 import { LIFECYCLE_STEPS, STATUS_LABELS, STEP_LABELS, lifecycleOf } from "@/modules/leads/lifecycle";
 import type { LeadRead } from "@/modules/leads/types";
 import { LeadPriority, LeadSource, LeadStatus, LostReason } from "@/types/enums";
-import { toTitleCase, formatDate } from "@/utils/format";
+import { toTitleCase, formatDate, formatDateTimeSeconds } from "@/utils/format";
 import { exportToCsv } from "@/utils/csv";
 import { queryKeys } from "@/constants/queryKeys";
 
@@ -315,13 +315,15 @@ export function LeadsPage() {
         // so two rows side by side were never comparable.
         accessorKey: "updated_at",
         header: "Last activity",
-        size: 140,
+        size: 190,
         cell: ({ row }) => {
           const lead = row.original;
           const due = lead.next_follow_up_at;
           return (
             <div className="min-w-0">
-              <p className="truncate text-muted-foreground">{formatDate(lead.updated_at)}</p>
+              <p className="truncate text-muted-foreground" title={formatDateTimeSeconds(lead.updated_at)}>
+                {formatDateTimeSeconds(lead.updated_at)}
+              </p>
               {due && lead.status !== "lost" && (
                 <p className="truncate text-[13px] font-medium text-warning">Follow up {formatDate(due)}</p>
               )}

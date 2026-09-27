@@ -13,6 +13,11 @@ export const notificationService = {
     return data;
   },
 
+  async markAllRead(): Promise<{ updated: number }> {
+    const { data } = await apiClient.post<{ updated: number }>("/notifications/read-all");
+    return data;
+  },
+
   async markUnread(id: string): Promise<NotificationRead> {
     const { data } = await apiClient.post<NotificationRead>(`/notifications/${id}/unread`);
     return data;

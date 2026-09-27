@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Building2, CircleDot, ExternalLink } from "lucide-react";
+import { Building2, CircleDot, ExternalLink, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ListToolbar } from "@/components/shared/ListToolbar";
 import { DataTable } from "@/components/shared/DataTable";
@@ -112,6 +113,11 @@ export function WebsiteUniversitiesPage() {
       <PageHeader
         title="Universities"
         description="What the public site shows for each institution. A section with no content does not render at all."
+        actions={
+          <Button size="sm" onClick={() => navigate("/website/universities/new")}>
+            <Plus className="h-3.5 w-3.5" /> Add university
+          </Button>
+        }
       />
 
       <ListToolbar

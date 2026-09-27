@@ -25,14 +25,17 @@ export function StudentProfilePanel({ userId }: { userId: string }) {
         <AvatarUploader userId={userId} />
       </section>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <PersonalInfoCard userId={userId} />
+      {/* Two independent columns rather than two grid rows. In rows, the short
+          Personal information card was stretched to the height of the long
+          Student details card beside it and left a block of empty card. Here
+          each card is its own height and the columns come out about even. */}
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+        <div className="space-y-4">
+          <PersonalInfoCard userId={userId} />
+          <EducationHistoryCard userId={userId} />
+          <WorkExperienceCard userId={userId} />
+        </div>
         <StudentDetailsCard userId={userId} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <EducationHistoryCard userId={userId} />
-        <WorkExperienceCard userId={userId} />
       </div>
     </div>
   );

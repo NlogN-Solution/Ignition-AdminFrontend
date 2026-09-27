@@ -22,6 +22,9 @@ import {
   useWebsiteUniversities,
 } from "@/modules/website/hooks";
 import type { ScholarshipRead } from "@/modules/website/types";
+import { formatDate } from "@/utils/format";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function WebsiteScholarshipsPage() {
   const [search, setSearch] = useState("");
@@ -59,7 +62,14 @@ export function WebsiteScholarshipsPage() {
         // Prose, not a number: "5% early payment discount if full fees paid".
         cell: ({ row }) => <span className="text-xs">{row.original.amount ?? "—"}</span>,
       },
-      { accessorKey: "deadline", header: "Deadline", cell: ({ row }) => <span className="text-xs">{row.original.deadline ?? "—"}</span> },
+      {
+        accessorKey: "deadline",
+        header: "Deadline",
+        cell: ({ row }) => {
+          const value = row.original.deadline;
+          return <span className="text-xs">{value ? (ISO_DATE.test(value) ? formatDate(value) : value) : "—"}</span>;
+        },
+      },
       {
         id: "state",
         header: "State",
@@ -266,7 +276,19 @@ function ScholarshipDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Deadline</Label>
-            <Input value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
+            {/* A real date. Stored as YYYY-MM-DD in the same text column, so an
+                older free-text deadline is kept as it is until a date is
+                picked to replace it. */}
+            <Input
+              type="date"
+              value={ISO_DATE.test(form.deadline) ? form.deadline : ""}
+              onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+            />
+            {form.deadline && !ISO_DATE.test(form.deadline) && (
+              <p className="text-xs text-muted-foreground">
+                Currently &ldquo;{form.deadline}&rdquo;. Pick a date to replace it.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Eligibility</Label>

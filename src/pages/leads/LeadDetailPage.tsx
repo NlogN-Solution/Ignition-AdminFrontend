@@ -84,7 +84,7 @@ import { DocumentUploadDialog } from "@/modules/documents/DocumentUploadDialog";
 import { PaymentFormDialog } from "@/modules/payments/PaymentFormDialog";
 import { AppointmentFormDialog } from "@/modules/appointments/AppointmentFormDialog";
 import { LeadStatus, UserRole } from "@/types/enums";
-import { formatDate, formatDateTime, formatRelativeTime, toTitleCase } from "@/utils/format";
+import { formatDate, formatDateTimeSeconds, formatRelativeTime, toTitleCase } from "@/utils/format";
 
 /**
  * Three tabs, always. The stage decides which three — a raw lead has no
@@ -267,7 +267,7 @@ export function LeadDetailPage() {
             index={leadCycle.index}
             ended={leadCycle.lost}
             caption={leadCycle.statusLabel}
-            note={`Captured ${formatDateTime(lead.created_at)}`}
+            note={`Captured ${formatDateTimeSeconds(lead.created_at)}`}
           />
         </div>
 
@@ -496,7 +496,7 @@ export function LeadDetailPage() {
                       label="Converted"
                       value={
                         <>
-                          {formatDate(lead.converted_at)}
+                          {formatDateTimeSeconds(lead.converted_at)}
                           {lead.conversion_source && ` · ${toTitleCase(lead.conversion_source)}`}
                         </>
                       }
@@ -752,7 +752,11 @@ function ActivityTab({ leadId }: { leadId: string }) {
               <div className="min-w-0 flex-1 pb-1">
                 <p className="text-[13px] font-medium text-foreground">{activity.title ?? toTitleCase(activity.activity_type)}</p>
                 {activity.description && <p className="text-xs text-muted-foreground">{activity.description}</p>}
-                <p className="mt-0.5 text-[11px] text-muted-foreground/70">{formatRelativeTime(activity.created_at)}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+                  <time dateTime={activity.created_at}>{formatDateTimeSeconds(activity.created_at)}</time>
+                  {" · "}
+                  {formatRelativeTime(activity.created_at)}
+                </p>
               </div>
             </li>
           ))}

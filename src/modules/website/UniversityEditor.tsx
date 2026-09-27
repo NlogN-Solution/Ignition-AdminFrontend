@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm, Controller, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,7 +14,12 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { RequirementsMatrix } from "./RequirementsMatrix";
 import { UniversityCoursesTab } from "./UniversityCoursesTab";
-import { useUpdateWebsiteUniversity } from "./hooks";
+import { CourseFormDialog, type CourseDraft } from "./CourseFormDialog";
+import { useCreateWebsiteUniversity, useUpdateWebsiteUniversity } from "./hooks";
+import { websiteService } from "./service";
+import { useCountries } from "@/modules/academic/hooks";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/utils/errors";
 import { UK_REGIONS, type WebsiteUniversity, type WebsiteUniversityPayload } from "./types";
 
 /**
@@ -26,6 +31,9 @@ import { UK_REGIONS, type WebsiteUniversity, type WebsiteUniversityPayload } fro
 const PUBLISH_REQUIRED = ["slug", "name", "city", "region", "tagline", "overview"] as const;
 
 const schema = z.object({
+  // Only asked for when creating: a university belongs to a country, and the
+  // API will not create one without it.
+  country_id: z.string().optional(),
   slug: z.string().optional(),
   name: z.string().min(1, "Required"),
   city: z.string().optional(),
@@ -176,6 +184,60 @@ function toForm(university: WebsiteUniversity): FormValues {
     is_published: university.is_published,
     is_example: university.is_example,
     is_active: university.is_active,
+  };
+}
+
+/** A new record: everything empty, active, not yet published. */
+function blankForm(): FormValues {
+  return {
+    country_id: "",
+    slug: "",
+    name: "",
+    city: "",
+    region: "",
+    monogram: "",
+    kind: "",
+    founded: "",
+    website: "",
+    logo_url: "",
+    tagline: "",
+    overview: "",
+    student_experience: "",
+    careers_text: "",
+    tuition_min: "",
+    tuition_max: "",
+    living_cost_monthly: "",
+    accommodation_guaranteed: false,
+    accommodation_weekly_from: "",
+    accommodation_weekly_to: "",
+    accommodation_note: "",
+    entry_typical: "",
+    entry_english: "",
+    entry_tariff: "",
+    entry_ielts: "",
+    campus: "",
+    student_population: "",
+    international_students: "",
+    student_staff_ratio: "",
+    placement_year: false,
+    facilities: [],
+    international_support: [],
+    employed_rate: "",
+    employed_source: "",
+    median_salary: "",
+    placement_rate: "",
+    employers: [],
+    services: [],
+    rankings: [],
+    awards: [],
+    milestones: [],
+    history: [],
+    hero_image: "",
+    card_image: "",
+    flyer_url: "",
+    is_published: false,
+    is_example: false,
+    is_active: true,
   };
 }
 
@@ -369,8 +431,23 @@ function StringList({
  * cancel button — there is nothing to close, and navigating away is the
  * cancel.
  */
-export function UniversityEditor({ university }: { university: WebsiteUniversity }) {
+export function UniversityEditor({
+  university,
+  onCreated,
+}: {
+  /** Absent when creating a new university. */
+  university?: WebsiteUniversity;
+  /** Called with the new id once the university (and its courses) are saved. */
+  onCreated?: (id: string) => void;
+}) {
+  const isNew = !university;
   const update = useUpdateWebsiteUniversity(university?.id ?? "");
+  const create = useCreateWebsiteUniversity();
+  const { data: countries } = useCountries({ limit: 100 });
+  // Courses entered before the university exists; created right after it.
+  const [draftCourses, setDraftCourses] = useState<CourseDraft[]>([]);
+  const [addingCourse, setAddingCourse] = useState(false);
+  const [creatingCourses, setCreatingCourses] = useState(false);
   /**
    * Seeded synchronously from the record, not by a `reset` in an effect.
    *
@@ -382,16 +459,25 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
    * (its page does not render the editor until it is), so there is no reason
    * for the first render to be empty.
    */
-  const { register, handleSubmit, control, reset, watch, formState } = useForm<FormValues>({
+  const { register, handleSubmit, control, reset, watch, setValue, formState } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: toForm(university),
+    defaultValues: university ? toForm(university) : blankForm(),
   });
 
   // Re-seed only when the record itself is replaced — a save round-trip, or a
   // refetch after an import.
   useEffect(() => {
-    reset(toForm(university));
+    if (university) reset(toForm(university));
   }, [university, reset]);
+
+  // A new university defaults to the United Kingdom — the only destination
+  // Ignition places students in — once the countries have loaded.
+  const countryId = watch("country_id");
+  useEffect(() => {
+    if (!isNew || countryId || !countries?.items.length) return;
+    const uk = countries.items.find((c) => c.iso2 === "GB" || /united kingdom/i.test(c.name));
+    setValue("country_id", (uk ?? countries.items[0]).id);
+  }, [isNew, countryId, countries, setValue]);
 
   const values = watch();
   const completeness = useCompleteness(values);
@@ -404,9 +490,39 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
   const missingForPublish = PUBLISH_REQUIRED.filter((key) => !String(values[key as keyof FormValues] ?? "").trim());
   const canPublish = missingForPublish.length === 0;
 
-  const onSubmit = (form: FormValues) => {
-    update.mutate(toPayload(form));
+  const onSubmit = async (form: FormValues) => {
+    if (university) {
+      update.mutate(toPayload(form));
+      return;
+    }
+    if (!form.country_id) {
+      toast.error("Choose the country this university is in.");
+      return;
+    }
+    const created = await create.mutateAsync({ ...toPayload(form), country_id: form.country_id }).catch(() => null);
+    if (!created) return;
+
+    // The optional courses, now that there is a university to attach them to.
+    // One failing does not undo the university; it is reported and can be
+    // added again from the Courses tab.
+    if (draftCourses.length) {
+      setCreatingCourses(true);
+      let failed = 0;
+      for (const course of draftCourses) {
+        try {
+          await websiteService.courses.create({ ...course, university_id: created.id });
+        } catch (error) {
+          failed += 1;
+          toast.error(`${course.name}: ${getErrorMessage(error)}`);
+        }
+      }
+      setCreatingCourses(false);
+      const added = draftCourses.length - failed;
+      if (added) toast.success(`${added} course${added === 1 ? "" : "s"} added`);
+    }
+    onCreated?.(created.id);
   };
+  const isSaving = update.isPending || create.isPending || creatingCourses;
 
   return (
     <div>
@@ -434,6 +550,24 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
 
             <TabsContent value="identity" className="space-y-4 pt-4">
               <div className="grid gap-4 sm:grid-cols-2">
+                {isNew && (
+                  <Field label="Country">
+                    <Controller
+                      control={control}
+                      name="country_id"
+                      render={({ field }) => (
+                        <Select value={field.value || undefined} onValueChange={field.onChange}>
+                          <SelectTrigger><SelectValue placeholder="Select country…" /></SelectTrigger>
+                          <SelectContent>
+                            {(countries?.items ?? []).map((country) => (
+                              <SelectItem key={country.id} value={country.id}>{country.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </Field>
+                )}
                 <Field label="Name"><Input {...register("name")} /></Field>
                 <Field label="Slug" hint="The public URL segment. Also what the research handoff carries.">
                   <Input {...register("slug")} placeholder="york-st-john" />
@@ -482,7 +616,15 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
                 come here to look up, and it is read-only on purpose: a row
                 opens the course's own editor. */}
             <TabsContent value="courses" className="pt-4">
-              <UniversityCoursesTab universityId={university.id} />
+              {university ? (
+                <UniversityCoursesTab universityId={university.id} />
+              ) : (
+                <DraftCourseList
+                  courses={draftCourses}
+                  onAdd={() => setAddingCourse(true)}
+                  onRemove={(index) => setDraftCourses((current) => current.filter((_, i) => i !== index))}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="money" className="space-y-4 pt-4">
@@ -524,7 +666,13 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
             </TabsContent>
 
             <TabsContent value="routes" className="pt-4">
-              <RequirementsMatrix universityId={university.id} />
+              {university ? (
+                <RequirementsMatrix universityId={university.id} />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Entry routes are added once the university exists. Create it, then come back to this tab.
+                </p>
+              )}
             </TabsContent>
 
             <TabsContent value="life" className="space-y-4 pt-4">
@@ -739,12 +887,65 @@ export function UniversityEditor({ university }: { university: WebsiteUniversity
               button at the bottom of the tallest one is a save button nobody
               finds from the top of another. */}
           <div className="sticky bottom-0 mt-6 flex justify-end gap-2 border-t border-border bg-background/95 py-3 backdrop-blur">
-            <Button type="submit" disabled={update.isPending}>
-              {update.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save changes
+            <Button type="submit" disabled={isSaving}>
+              {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isNew ? "Create university" : "Save changes"}
             </Button>
           </div>
         </form>
+
+      {isNew && (
+        <CourseFormDialog
+          open={addingCourse}
+          onOpenChange={setAddingCourse}
+          onDraft={(course) => setDraftCourses((current) => [...current, course])}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The courses queued on a new university, before it has been created. */
+function DraftCourseList({
+  courses,
+  onAdd,
+  onRemove,
+}: {
+  courses: CourseDraft[];
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Optional. Courses added here are created together with the university.
+        </p>
+        <Button type="button" size="sm" onClick={onAdd}>
+          <Plus className="h-3.5 w-3.5" /> Add course
+        </Button>
+      </div>
+      {courses.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          No courses yet. You can also add them later from this tab.
+        </p>
+      ) : (
+        <ul className="divide-y divide-border rounded-lg border border-border">
+          {courses.map((course, index) => (
+            <li key={`${course.name}-${index}`} className="flex items-center justify-between gap-3 px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium">{course.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {[course.qualification, course.course_level, course.subject].filter(Boolean).join(" · ") || "—"}
+                </p>
+              </div>
+              <Button type="button" variant="ghost" size="icon" onClick={() => onRemove(index)} aria-label={`Remove ${course.name}`}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

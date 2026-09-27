@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
-import { BookOpen, Loader2 } from "lucide-react";
+import { BookOpen, Loader2, Plus } from "lucide-react";
+import { CourseFormDialog } from "@/modules/website/CourseFormDialog";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ListToolbar } from "@/components/shared/ListToolbar";
 import { DataTable } from "@/components/shared/DataTable";
@@ -26,6 +27,7 @@ const PAGE_SIZE = 25;
  * worked, and the bulk bar is how it gets worked quickly.
  */
 export function WebsiteCoursesPage() {
+  const [addingCourse, setAddingCourse] = useState(false);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [university, setUniversity] = useState("all");
@@ -121,7 +123,13 @@ export function WebsiteCoursesPage() {
       <PageHeader
         title="Courses"
         description="Every university's offering of every course. Subjects were derived from course titles on import — work the unclassified ones here."
+        actions={
+          <Button size="sm" onClick={() => setAddingCourse(true)}>
+            <Plus className="h-3.5 w-3.5" /> Add course
+          </Button>
+        }
       />
+      <CourseFormDialog open={addingCourse} onOpenChange={setAddingCourse} />
 
       <ListToolbar
         searchValue={search}

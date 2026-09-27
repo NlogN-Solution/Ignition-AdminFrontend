@@ -25,7 +25,6 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserPicker } from "@/components/shared/UserPicker";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ApplicationFormDialog } from "@/modules/applications/ApplicationFormDialog";
-import { IndicatorRow, OverallBadge, ReadinessBar } from "@/modules/eligibility/badges";
 import { assessmentReference } from "@/modules/eligibility/reference";
 import { useEligibilityAssessment } from "@/modules/eligibility/hooks";
 import {
@@ -39,7 +38,7 @@ import { LeadFollowUpTimeline } from "@/modules/leads/LeadFollowUpTimeline";
 import { useAssignLead, useChangeLeadStatus, useLead, useUpdateLead } from "@/modules/leads/hooks";
 import { useAuthStore } from "@/services/authStore";
 import { LeadStatus, UserRole } from "@/types/enums";
-import { formatDate, formatDateTime } from "@/utils/format";
+import { formatDateTime } from "@/utils/format";
 
 /**
  * One assessment, and everything needed to act on it.
@@ -54,10 +53,10 @@ import { formatDate, formatDateTime } from "@/utils/format";
  * existing lead hooks, which log to the lead's own timeline exactly as they do
  * from the leads screen. Nothing here is a second CRM.
  *
- * The system's verdict and the counsellor's decision are kept visibly apart.
- * The panel says what the rules said and which version said it; what happens
- * to the student is the status the counsellor sets, and the two are never
- * merged into one field.
+ * It shows only what the student submitted. The automatic preliminary
+ * assessment (per-area indicators, an overall verdict, a readiness score) is
+ * still computed server-side but deliberately not shown: the counsellor
+ * decides, and a second opinion from a ruleset only got in the way.
  */
 export function EligibilityDetailPage() {
   const { assessmentId } = useParams();
@@ -110,7 +109,6 @@ export function EligibilityDetailPage() {
 
   // `phoneDigits` is gone with the WhatsApp button it built a wa.me link for.
   // `tel:` does its own stripping below.
-  const readiness = assessment.document_readiness;
 
   return (
     <div>
@@ -130,7 +128,6 @@ export function EligibilityDetailPage() {
               {contact.full_name}
             </h1>
             {lead ? <StatusBadge status={lead.status} /> : null}
-            <OverallBadge status={assessment.overall_status} />
           </div>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {/* The reference the student was handed on the confirmation screen.
@@ -313,10 +310,6 @@ export function EligibilityDetailPage() {
                     value={DOCUMENT_LABELS[String(documents[item.key])] ?? null}
                   />
                 ))}
-                <div className="flex items-baseline justify-between gap-4 border-t border-border pt-2.5">
-                  <span className="text-xs font-medium text-foreground">Readiness</span>
-                  <ReadinessBar value={readiness} />
-                </div>
               </Panel>
 
               {assessment.message ? (
@@ -365,62 +358,17 @@ export function EligibilityDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <section className="rounded-xl border border-border bg-card p-4">
-            <h2 className="text-[13px] font-semibold text-foreground">System preliminary assessment</h2>
-            <p className="mb-3 mt-0.5 text-xs text-muted-foreground">
-              Computed from the student&rsquo;s answers by ruleset {assessment.assessment_version}.
-              Nothing here is verified — it is a starting point, not a decision.
-            </p>
-
-            <div className="divide-y divide-border">
-              <IndicatorRow label="Academic" status={assessment.academic_status} />
-              <IndicatorRow label="English" status={assessment.english_status} />
-              <IndicatorRow label="Financial" status={assessment.financial_status} />
-              <IndicatorRow label="Documents" status={assessment.document_status} />
-            </div>
-
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
-              <span className="text-xs text-muted-foreground">Overall</span>
-              <OverallBadge status={assessment.overall_status} />
-            </div>
-
-            {assessment.assessment_notes.length ? (
-              <ul className="mt-3 space-y-1.5 border-t border-border pt-3">
-                {assessment.assessment_notes.map((note) => (
-                  <li key={note} className="text-xs leading-relaxed text-muted-foreground">
-                    {note}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </section>
-
-          <section className="rounded-xl border border-border bg-card p-4">
-            <h2 className="text-[13px] font-semibold text-foreground">Counsellor decision</h2>
-            <p className="mb-3 mt-0.5 text-xs text-muted-foreground">
-              The system routes; you decide. Status and ownership below are what the business acts
-              on.
-            </p>
-            <Row label="Status" value={lead ? lead.status.replace("_", " ") : null} />
-            <Row label="Assigned to" value={assessment.assigned_to_name ?? "Unassigned"} />
-            <Row
-              label="Last contacted"
-              value={assessment.last_contacted_at ? formatDate(assessment.last_contacted_at) : "Never"}
-            />
-            <Row
-              label="Next follow-up"
-              value={
-                assessment.next_follow_up_at ? formatDate(assessment.next_follow_up_at) : "None set"
-              }
-            />
-            {lead ? (
-              <Button variant="outline" size="sm" className="mt-3 w-full" asChild>
-                <Link to={`/leads/${lead.id}`}>
-                  <FileText className="h-3.5 w-3.5" /> Open full lead record
-                </Link>
-              </Button>
-            ) : null}
-          </section>
+          {/* The rules engine's verdict ("likely eligible", per-area indicators)
+              and the duplicated status/owner summary used to sit here. Removed:
+              this page shows what the student submitted, and the counsellor
+              makes the call. Status and ownership live on the lead. */}
+          {lead ? (
+            <Button variant="outline" size="sm" className="w-full" asChild>
+              <Link to={`/leads/${lead.id}`}>
+                <FileText className="h-3.5 w-3.5" /> Open full lead record
+              </Link>
+            </Button>
+          ) : null}
 
           {assessment.source_page ? (
             <section className="rounded-xl border border-border bg-card p-4">

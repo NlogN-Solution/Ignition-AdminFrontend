@@ -30,14 +30,20 @@ export function ContentList({
   icon,
   newLabel,
   hideHeader,
+  editorBase,
 }: {
   title: string;
   description: string;
   kinds: ContentKind[];
   icon: LucideIcon;
   newLabel: string;
-  /** Set when the screen already has a header of its own — the Blog tabs do. */
+  /** Set when the screen already has a header of its own. */
   hideHeader?: boolean;
+  /**
+   * Articles and guides open in the full-screen writer at `${editorBase}/:id`
+   * (and `${editorBase}/new`) instead of the block editor.
+   */
+  editorBase?: string;
 }) {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -46,6 +52,7 @@ export function ContentList({
   const [state, setState] = useState<string>("all");
   const [creating, setCreating] = useState(false);
   const debounced = useDebounce(search, 300);
+  const startNew = () => (editorBase ? navigate(`${editorBase}/new`) : setCreating(true));
 
   const { data, isLoading } = useContentPages({
     page,
@@ -136,7 +143,7 @@ export function ContentList({
           title={title}
           description={description}
           actions={
-            <Button size="sm" onClick={() => setCreating(true)}>
+            <Button size="sm" onClick={startNew}>
               <Plus className="h-3.5 w-3.5" /> {newLabel}
             </Button>
           }
@@ -153,7 +160,7 @@ export function ContentList({
         filters={
           <>
             {hideHeader && (
-              <Button size="sm" className="h-8" onClick={() => setCreating(true)}>
+              <Button size="sm" className="h-8" onClick={startNew}>
                 <Plus className="h-3.5 w-3.5" /> {newLabel}
               </Button>
             )}
@@ -203,7 +210,7 @@ export function ContentList({
         data={items}
         isLoading={isLoading}
         getRowId={(row) => row.id}
-        onRowClick={(row) => navigate(`/website/content/${row.id}`)}
+        onRowClick={(row) => navigate(editorBase ? `${editorBase}/${row.id}` : `/website/content/${row.id}`)}
         page={page}
         limit={25}
         total={data?.total}
@@ -211,13 +218,15 @@ export function ContentList({
         emptyState={<EmptyState icon={icon} title={`No ${title.toLowerCase()} yet`} description={description} />}
       />
 
-      <ContentPageSheet
-        page={null}
-        open={creating}
-        onOpenChange={setCreating}
-        defaultKind={kinds[0]}
-        onCreated={(created) => navigate(`/website/content/${created.id}`)}
-      />
+      {!editorBase && (
+        <ContentPageSheet
+          page={null}
+          open={creating}
+          onOpenChange={setCreating}
+          defaultKind={kinds[0]}
+          onCreated={(created) => navigate(`/website/content/${created.id}`)}
+        />
+      )}
     </div>
   );
 }

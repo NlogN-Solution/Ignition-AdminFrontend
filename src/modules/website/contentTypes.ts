@@ -44,6 +44,9 @@ export interface ContentPageRead {
   source: { label?: string; href?: string } | null;
   related: { label?: string; href?: string }[] | null;
   reading_minutes: number | null;
+  /** Rich-text body from the article editor, sanitised by the API. */
+  body_html: string | null;
+  cover_image_url: string | null;
   published_at: string | null;
   is_published: boolean;
   author_id: string | null;

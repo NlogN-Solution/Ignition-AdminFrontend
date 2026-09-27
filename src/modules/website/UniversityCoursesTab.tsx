@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { BookOpen, Search } from "lucide-react";
+import { BookOpen, Plus, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CourseFormDialog } from "./CourseFormDialog";
 import { DataTable } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +34,7 @@ export function UniversityCoursesTab({ universityId }: { universityId: string })
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [adding, setAdding] = useState(false);
   const debounced = useDebounce(search, 300);
 
   const { data, isLoading } = useWebsiteCourses({
@@ -121,12 +124,19 @@ export function UniversityCoursesTab({ universityId }: { universityId: string })
             className="h-8 pl-8"
           />
         </div>
-        {data ? (
-          <p className="text-xs text-muted-foreground">
-            {data.total.toLocaleString()} course{data.total === 1 ? "" : "s"} offered
-          </p>
-        ) : null}
+        <div className="flex items-center gap-3">
+          {data ? (
+            <p className="text-xs text-muted-foreground">
+              {data.total.toLocaleString()} course{data.total === 1 ? "" : "s"} offered
+            </p>
+          ) : null}
+          <Button type="button" size="sm" onClick={() => setAdding(true)}>
+            <Plus className="h-3.5 w-3.5" /> Add course
+          </Button>
+        </div>
       </div>
+
+      <CourseFormDialog open={adding} onOpenChange={setAdding} universityId={universityId} />
 
       <DataTable
         columns={columns}
@@ -145,7 +155,7 @@ export function UniversityCoursesTab({ universityId }: { universityId: string })
             description={
               search
                 ? "Try a shorter search term."
-                : "Nothing has been imported for this university. Run an import from Website ▸ Imports."
+                : "Add one with “Add course”, or run an import from Website ▸ Imports."
             }
           />
         }

@@ -10,7 +10,6 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserPicker } from "@/components/shared/UserPicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/useDebounce";
-import { OverallBadge, ReadinessBar } from "@/modules/eligibility/badges";
 import { useEligibilityAssessments, useEligibilityStats } from "@/modules/eligibility/hooks";
 import { assessmentReference } from "@/modules/eligibility/reference";
 import type { EligibilityAssessmentRead } from "@/modules/eligibility/types";
@@ -22,15 +21,13 @@ import { formatDate } from "@/utils/format";
  *
  * Ordered around the one question a counsellor opens it to answer: *who should
  * I call next?* So the columns are the ones that decide that — what they want
- * to study, what the system made of them, how ready their paperwork is, who
- * owns it — and the default sort is newest first, because a lead that has just
+ * to study, their English, who owns it — and the default sort is newest first, because a lead that has just
  * arrived is the one most likely to answer the phone.
  */
 export function EligibilityAssessmentsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [overall, setOverall] = useState("all");
   const [leadStatus, setLeadStatus] = useState("all");
   const [studyLevel, setStudyLevel] = useState("all");
   const [assignee, setAssignee] = useState<string | undefined>();
@@ -41,7 +38,6 @@ export function EligibilityAssessmentsPage() {
     page,
     limit: 25,
     search: debounced || undefined,
-    overall_status: overall === "all" ? undefined : overall,
     lead_status: leadStatus === "all" ? undefined : leadStatus,
     study_level: studyLevel === "all" ? undefined : studyLevel,
     assigned_to: assignee,
@@ -97,16 +93,6 @@ export function EligibilityAssessmentsPage() {
         ),
       },
       {
-        id: "overall",
-        header: "Assessment",
-        cell: ({ row }) => <OverallBadge status={row.original.overall_status} />,
-      },
-      {
-        id: "documents",
-        header: "Documents",
-        cell: ({ row }) => <ReadinessBar value={row.original.document_readiness} />,
-      },
-      {
         id: "status",
         header: "Status",
         cell: ({ row }) => <StatusBadge status={row.original.lead_status} />,
@@ -144,15 +130,13 @@ export function EligibilityAssessmentsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Eligibility assessments"
-        description="Preliminary assessments submitted from the public site. Each one is a lead — open it to review the answers and start counselling."
+        description="Eligibility checks submitted from the public site. Each one is a lead — open it to review the answers and start counselling."
       />
 
       {stats ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-3 gap-3">
           <Metric label="Total" value={stats.total} />
           <Metric label="New" value={stats.new} />
-          <Metric label="Likely eligible" value={stats.likely_eligible} />
-          <Metric label="Needs review" value={stats.needs_review} />
           <Metric label="Unassigned" value={stats.unassigned} />
         </div>
       ) : null}
@@ -166,13 +150,6 @@ export function EligibilityAssessmentsPage() {
         searchPlaceholder="Search reference, name, email, phone or course…"
         filters={
           <>
-            <Filter value={overall} onChange={setOverall} placeholder="Assessment" width={160}>
-              <SelectItem value="all">All assessments</SelectItem>
-              <SelectItem value="preliminary_likely_eligible">Likely eligible</SelectItem>
-              <SelectItem value="needs_counsellor_review">Needs review</SelectItem>
-              <SelectItem value="more_information_required">More info required</SelectItem>
-            </Filter>
-
             <Filter value={leadStatus} onChange={setLeadStatus} placeholder="Status" width={140}>
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="new">New</SelectItem>

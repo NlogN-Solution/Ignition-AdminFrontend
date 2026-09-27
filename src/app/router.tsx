@@ -31,12 +31,19 @@ const WebsiteUniversitiesPage = lazy(() => import("@/pages/website").then((m) =>
 const WebsiteUniversityDetailPage = lazy(() =>
   import("@/pages/website").then((m) => ({ default: m.WebsiteUniversityDetailPage })),
 );
+// Imported from its own file, not the website barrel, so CKEditor (~1 MB) is
+// only downloaded when someone opens the writer.
+const WebsiteArticleEditorPage = lazy(() =>
+  import("@/pages/website/WebsiteArticleEditorPage").then((m) => ({ default: m.WebsiteArticleEditorPage })),
+);
+const WebsiteUniversityNewPage = lazy(() =>
+  import("@/pages/website").then((m) => ({ default: m.WebsiteUniversityNewPage })),
+);
 const WebsiteCoursesPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteCoursesPage })));
 const WebsiteCourseDetailPage = lazy(() =>
   import("@/pages/website").then((m) => ({ default: m.WebsiteCourseDetailPage })),
 );
 const WebsiteCountriesPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteCountriesPage })));
-const WebsiteScholarshipsPage = lazy(() => import("@/pages/website").then((m) => ({ default: m.WebsiteScholarshipsPage })));
 const EligibilityAssessmentsPage = lazy(() =>
   import("@/pages/eligibility").then((m) => ({ default: m.EligibilityAssessmentsPage })),
 );
@@ -127,6 +134,7 @@ export const router = createBrowserRouter([
           { path: "/eligibility", element: withModule("eligibility", <EligibilityAssessmentsPage />) },
           { path: "/eligibility/:assessmentId", element: withModule("eligibility", <EligibilityDetailPage />) },
           { path: "/website/universities", element: withModule("website", <WebsiteUniversitiesPage />) },
+          { path: "/website/universities/new", element: withModule("website", <WebsiteUniversityNewPage />) },
           { path: "/website/universities/:universityId", element: withModule("website", <WebsiteUniversityDetailPage />) },
           { path: "/website/courses", element: withModule("website", <WebsiteCoursesPage />) },
           { path: "/website/courses/:courseId", element: withModule("website", <WebsiteCourseDetailPage />) },
@@ -134,10 +142,13 @@ export const router = createBrowserRouter([
           // have always been able to manage them and moving the item in the
           // sidebar is not a reason to take that away.
           { path: "/website/countries", element: withModule("academic", <WebsiteCountriesPage />) },
-          { path: "/website/scholarships", element: withModule("website", <WebsiteScholarshipsPage />) },
+          // Scholarships are hidden from the console for now; the page and API
+          // remain and come back by restoring this route and its nav entry.
           { path: "/website/pages", element: withModule("website", <WebsitePagesPage />) },
           { path: "/website/guides", element: withModule("website", <WebsiteGuidesPage />) },
+          { path: "/website/guides/:pageId", element: withModule("website", <WebsiteArticleEditorPage kind="guide" />) },
           { path: "/website/blog", element: withModule("website", <WebsiteBlogPage />) },
+          { path: "/website/blog/:pageId", element: withModule("website", <WebsiteArticleEditorPage kind="post" />) },
           { path: "/website/content/:pageId", element: withModule("website", <WebsiteContentEditorPage />) },
           { path: "/website/media", element: withModule("website", <WebsiteMediaPage />) },
           { path: "/website/imports", element: withModule("website", <WebsiteImportsPage />) },

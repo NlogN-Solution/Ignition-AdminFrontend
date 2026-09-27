@@ -21,6 +21,18 @@ export function formatDateTime(value: string | Date | null | undefined): string 
   return formatDate(value, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+/** To the second, e.g. "Sep 27, 2026, 2:05:09 PM" — for audit-style timelines. */
+export function formatDateTimeSeconds(value: string | Date | null | undefined): string {
+  return formatDate(value, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 export function formatRelativeTime(value: string | Date | null | undefined): string {
   if (!value) return "—";
   const date = typeof value === "string" ? new Date(value) : value;
