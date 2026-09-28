@@ -8,7 +8,7 @@ import { useCurrentUser, useUnauthorizedListener } from "@/hooks/useAuth";
 import { useThemeEffect } from "@/hooks/useTheme";
 
 /**
- * The shell is inset from the window on every side, so the sidebar reads as a
+ * Th shell is inset from the window on every side, so the sidebar reads as a
  * panel resting on the canvas rather than a column bolted to the edge. The top
  * bar lives *inside* the scroll container: content passes under it and is
  * blurred by it, which is the whole reason it is made of glass.
