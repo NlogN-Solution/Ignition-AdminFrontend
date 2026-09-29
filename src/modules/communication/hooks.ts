@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/utils/errors";
+import { navigateTab, openBlankTab } from "@/modules/documents/openDocument";
 import { communicationService } from "./service";
 import type { ThreadCreatePayload, ThreadReplyPayload } from "./types";
 
@@ -91,11 +92,10 @@ export async function openAttachment(
 ) {
   // Opened synchronously then navigated, so the browser attributes the popup
   // to the click that started it. Same reasoning as `openDocumentFile`.
-  const target = window.open("", "_blank", "noopener,noreferrer");
+  const target = openBlankTab();
   try {
     const { url } = await communicationService.attachmentLink(attachmentId, disposition);
-    if (target) target.location.href = url;
-    else window.location.assign(url);
+    navigateTab(target, url);
   } catch {
     target?.close();
     toast.error("Couldn't open that attachment");

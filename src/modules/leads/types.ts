@@ -27,6 +27,8 @@ export interface LeadRead {
   remarks: string | null;
   next_follow_up_at: string | null;
   converted_user_id: string | null;
+  /** When they created their own portal account. Registering does not make them a client. */
+  registered_at: string | null;
   qualified_by: string | null;
   qualified_at: string | null;
   converted_by: string | null;
@@ -68,6 +70,8 @@ export interface LeadListParams {
   priority?: LeadPriority;
   assigned_to?: string;
   exclude_status?: LeadStatus;
+  /** Only people who signed up on the portal themselves, newest sign-up first. */
+  registered?: boolean;
 }
 
 export interface LeadActivityRead {

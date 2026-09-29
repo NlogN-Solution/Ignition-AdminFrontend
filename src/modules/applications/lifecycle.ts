@@ -55,6 +55,8 @@ export const APPLICATION_PHASES = [
  */
 const PHASE_INDEX: Record<ApplicationStatus, number> = {
   requested: 0,
+  // Stopped at the door: it never became an application anyone worked.
+  request_rejected: 0,
   draft: 1,
   documents_pending: 1,
   ready_to_submit: 1,
@@ -74,6 +76,7 @@ const PHASE_INDEX: Record<ApplicationStatus, number> = {
 };
 
 const ENDED: ApplicationStatus[] = [
+  ApplicationStatus.REQUEST_REJECTED,
   ApplicationStatus.OFFER_DECLINED,
   ApplicationStatus.VISA_REJECTED,
   ApplicationStatus.WITHDRAWN,
@@ -83,6 +86,7 @@ const ENDED: ApplicationStatus[] = [
 /** What the caption says. Plainer than the raw enum, same meaning. */
 export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   requested: "Requested",
+  request_rejected: "Request Rejected",
   draft: "Draft",
   documents_pending: "Documents Pending",
   ready_to_submit: "Ready to Submit",
@@ -127,6 +131,9 @@ export function applicationLifecycleOf(status: ApplicationStatus): ApplicationLi
 export const APPLICATION_STAGE_FILTERS = [
   { value: "all", label: "All stages" },
   { value: ApplicationStatus.REQUESTED, label: "Requested" },
+  // Not in "All stages" — the backend leaves rejected requests out of the
+  // working list — so this is the only way to reach them.
+  { value: ApplicationStatus.REQUEST_REJECTED, label: "Rejected requests" },
   { value: ApplicationStatus.DOCUMENTS_PENDING, label: "Documents pending" },
   { value: ApplicationStatus.SUBMITTED, label: "Submitted" },
   { value: ApplicationStatus.UNDER_REVIEW, label: "Under review" },
@@ -204,8 +211,27 @@ export function journeyStagesFor(status: ApplicationStatus): JourneyStage[] {
  * applications get their own line because "what next" is genuinely different
  * when there is no next.
  */
+/**
+ * A request nobody has accepted yet — `requested`, or `request_rejected`.
+ *
+ * Nothing about one may be edited, reassigned, moved or deleted (the backend
+ * refuses all four); the only thing to do is accept or reject it. Every
+ * control on the list and the detail page checks this rather than the two
+ * statuses by name.
+ */
+export function isUnacceptedRequest(status: ApplicationStatus): boolean {
+  return status === ApplicationStatus.REQUESTED || status === ApplicationStatus.REQUEST_REJECTED;
+}
+
 export function nextStepFor(status: ApplicationStatus): { title: string; body: string } {
   const { index, ended } = applicationLifecycleOf(status);
+
+  if (status === ApplicationStatus.REQUEST_REJECTED) {
+    return {
+      title: "Waiting on the student",
+      body: "You rejected this request and told the student what is missing. Once they have supplied it — check their documents — accept the request to start work, or wait for them to send it again.",
+    };
+  }
 
   if (ended) {
     return {

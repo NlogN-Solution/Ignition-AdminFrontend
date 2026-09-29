@@ -14,6 +14,7 @@ import {
   useApplication,
   useApplicationStatusHistory,
   useAcceptApplicationRequest,
+  useRejectApplicationRequest,
   useChangeApplicationStatus,
   useRecordMilestone,
   useStatusRequirements,
@@ -37,6 +38,7 @@ import { EditApplicationDialog } from "@/modules/applications/detail/EditApplica
 import { RecordMilestoneDialog } from "@/modules/applications/detail/RecordMilestoneDialog";
 import { ApplicationActivity } from "@/modules/applications/detail/tabs/ApplicationActivity";
 import { applicationReference } from "@/modules/applications/reference";
+import { isUnacceptedRequest } from "@/modules/applications/lifecycle";
 import { ApplicationCommunication } from "@/modules/applications/detail/tabs/ApplicationCommunication";
 import { ApplicationDocuments } from "@/modules/applications/detail/tabs/ApplicationDocuments";
 import { ApplicationNotes } from "@/modules/applications/detail/tabs/ApplicationNotes";
@@ -107,6 +109,7 @@ export function ApplicationDetailPage() {
 
   const changeStatus = useChangeApplicationStatus(applicationId ?? "");
   const acceptRequest = useAcceptApplicationRequest();
+  const rejectRequest = useRejectApplicationRequest();
   const recordMilestone = useRecordMilestone(applicationId ?? "");
   // The server's config. Which statuses need evidence is its answer, not a
   // list repeated here — see `services/status_requirements.py`.
@@ -168,6 +171,10 @@ export function ApplicationDetailPage() {
 
   const canManage = isManagerRole(role) || role === UserRole.COUNSELLOR;
   const canDelete = isManagerRole(role);
+  // A student's request nobody has accepted: nothing is editable until a
+  // counsellor accepts or rejects it (the backend refuses edits, status
+  // changes, advisor assignment and deletion until then).
+  const isAccepted = !isUnacceptedRequest(application.status);
   /**
    * `GET /applications/{id}/status-history` orders ASCENDING — oldest first
    * (`application_service.list_status_history`) — and the Status History tab
@@ -193,6 +200,7 @@ export function ApplicationDetailPage() {
         updatedAt={application.updated_at}
         canManage={canManage}
         canDelete={canDelete}
+        isAccepted={isAccepted}
         onBack={() => navigate("/applications")}
         onEdit={() => setEditOpen(true)}
         onChangeStatus={() => setStatusOpen(true)}
@@ -235,8 +243,14 @@ export function ApplicationDetailPage() {
               onEdit={() => setEditOpen(true)}
               onAssignAdvisor={() => setAssignOpen(true)}
               onRecordMilestone={setMilestoneStatus}
-              onAcceptRequest={() => acceptRequest.mutate(application.id)}
+              onAcceptRequest={(feedback, done) =>
+                acceptRequest.mutate({ id: application.id, feedback }, { onSuccess: done })
+              }
+              onRejectRequest={(feedback, done) =>
+                rejectRequest.mutate({ id: application.id, feedback }, { onSuccess: done })
+              }
               isAccepting={acceptRequest.isPending}
+              isRejecting={rejectRequest.isPending}
             />
           )}
 
@@ -250,7 +264,7 @@ export function ApplicationDetailPage() {
             <ApplicationNotes
               remarks={application.remarks}
               workflow={workflow}
-              canManage={canManage}
+              canManage={canManage && isAccepted}
               isSaving={updateApplication.isPending}
               onSave={(remarks) => updateApplication.mutate({ remarks })}
             />

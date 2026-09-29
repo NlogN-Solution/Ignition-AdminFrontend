@@ -83,8 +83,22 @@ export const applicationService = {
    * describe making one. The backend still writes it to status history with
    * the counsellor's id.
    */
-  async acceptRequest(id: string): Promise<ApplicationRead> {
-    const { data } = await apiClient.post<ApplicationRead>(`/applications/${id}/accept`);
+  async acceptRequest(id: string, feedback?: string): Promise<ApplicationRead> {
+    const { data } = await apiClient.post<ApplicationRead>(`/applications/${id}/accept`, {
+      feedback: feedback?.trim() || null,
+    });
+    return data;
+  },
+
+  /**
+   * Decline a student's request: `requested` → `request_rejected`.
+   *
+   * The feedback is required and shown to the student — it is what they need to
+   * supply before the request can be accepted. A rejected request leaves the
+   * working list and can still be accepted later with `acceptRequest`.
+   */
+  async rejectRequest(id: string, feedback: string): Promise<ApplicationRead> {
+    const { data } = await apiClient.post<ApplicationRead>(`/applications/${id}/reject`, { feedback });
     return data;
   },
 

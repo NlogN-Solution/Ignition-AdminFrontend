@@ -12,13 +12,12 @@ import { ArrivalsCard, type ArrivalRow } from "./ArrivalsCard";
  *
  * ## Why this needed a card of its own
  *
- * When someone registers on the portal, the backend already turns them into a
- * lead — `link_or_create_lead_for_student` either links them to an existing lead
- * or creates one, with `conversion_source = registration_completed`. That has
- * worked for a while. What was missing is that *nobody was told*. The new lead
- * is created with status `converted`, so it sorted into the Clients tab, which
- * is the tab staff look at least often — the freshest, warmest enquiry in the
- * business landed in the quietest corner of the console and sat there.
+ * When someone registers on the portal, the backend turns them into a lead —
+ * `link_or_create_lead_for_student` either links them to an existing lead or
+ * creates one, and stamps `registered_at`. What was missing is that *nobody was
+ * told*. They are a raw lead (`new`), not a client: registration is free and
+ * unvetted, so a sign-up is someone to qualify, and they climb the pipeline
+ * like any other lead. This card is where they are noticed first.
  *
  * So: one card, at the top of the dashboard, answering one question. It is
  * half the width now and sits beside the applications waiting for review,
@@ -33,7 +32,7 @@ import { ArrivalsCard, type ArrivalRow } from "./ArrivalsCard";
  * somebody has the dashboard open, toasts the arrival as it happens.
  *
  * The toast fires from a high-water mark, not from a diff of the list: we keep
- * the newest `converted_at` we have already announced in `localStorage`, so a
+ * the newest `registered_at` we have already announced in `localStorage`, so a
  * refresh, a tab switch or a remount cannot re-announce the same person. The
  * first load of a fresh browser announces nothing at all — it only records where
  * the line is — because opening the console for the first time should not fire
@@ -66,15 +65,12 @@ function writeSeen(value: string) {
 function useRecentRegistrations() {
   return useQuery({
     queryKey: ["dashboard", "registrations"],
-    // There is no "registered via portal" filter server-side, so this pulls the
-    // clients page and narrows on `conversion_source` here. `converted` is a
-    // small set and the alternative is a backend change for one widget.
-    queryFn: () => leadService.list({ status: "converted" as LeadRead["status"], limit: 50 }),
+    // `registered=true` returns only portal sign-ups, newest sign-up first,
+    // whatever stage the lead is now at.
+    queryFn: () => leadService.list({ registered: true, limit: 50 }),
     refetchInterval: POLL_MS,
     select: (page) => {
-      const items = page.items
-        .filter((l) => l.conversion_source === "registration_completed" && l.converted_at)
-        .sort((a, b) => new Date(b.converted_at as string).getTime() - new Date(a.converted_at as string).getTime());
+      const items = page.items.filter((l): l is LeadRead & { registered_at: string } => Boolean(l.registered_at));
       return { items, total: items.length };
     },
   });
@@ -100,7 +96,7 @@ export function NewRegistrationsCard() {
 
   useEffect(() => {
     if (items.length === 0) return;
-    const newest = items[0].converted_at as string;
+    const newest = items[0].registered_at;
     const seen = readSeen();
 
     if (!seen || !primed.current) {
@@ -111,7 +107,7 @@ export function NewRegistrationsCard() {
       return;
     }
 
-    const fresh = items.filter((l) => new Date(l.converted_at as string) > new Date(seen));
+    const fresh = items.filter((l) => new Date(l.registered_at) > new Date(seen));
     if (fresh.length === 0) return;
 
     const first = `${fresh[0].first_name} ${fresh[0].last_name ?? ""}`.trim();
@@ -129,14 +125,14 @@ export function NewRegistrationsCard() {
    * while fewer than fifty people registered in a fortnight. At that point the
    * delta understates rather than invents, which is the right way round.
    */
-  const dates = items.map((l) => l.converted_at as string);
+  const dates = items.map((l) => l.registered_at);
 
   const rows: ArrivalRow[] = items.map((lead) => ({
     id: lead.id,
     name: `${lead.first_name} ${lead.last_name ?? ""}`.trim(),
     monogram: initials(lead.first_name, lead.last_name),
     detail: lead.email ?? lead.phone,
-    at: lead.converted_at,
+    at: lead.registered_at,
     to: `/leads/${lead.id}`,
   }));
 
@@ -145,13 +141,13 @@ export function NewRegistrationsCard() {
       icon={UserRoundPlus}
       tone="info"
       title="New student registrations"
-      subtitle="Signed up on the portal — already in your pipeline"
+      subtitle="Signed up on the portal — new leads to qualify"
       count={countInWindow(dates, 0, 7)}
       previous={countInWindow(dates, 7, 14)}
       rows={rows}
       isLoading={isLoading}
       emptyText="Nobody has registered on the portal yet. When they do, they appear here and on the Leads list the moment they finish signing up — and everyone on the lead desk gets a notification."
-      viewAllTo="/leads?stage=converted"
+      viewAllTo="/leads?stage=new"
     />
   );
 }

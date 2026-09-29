@@ -47,7 +47,7 @@ export interface DocumentUploadPayload {
 /**
  * A signed URL the browser can actually open.
  *
- * Signed, not expiring — treat it as a credential and hand it straight to the
+ * Signed and short-lived (it expires after a few minutes) — treat it as a credential and hand it straight to the
  * browser rather than storing it. See the backend's `build_download_url`.
  */
 export interface DocumentLink {

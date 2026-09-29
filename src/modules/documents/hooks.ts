@@ -31,7 +31,13 @@ export function useDocumentFolder(studentId: string | undefined) {
 
 function useInvalidateDocuments() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: queryKeys.documents.all });
+  return () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.documents.all });
+    // Approving or rejecting a document moves the checklist item it fulfils
+    // (backend `sync_checklist_item_on_document_*`), and an application's
+    // Documents tab shows both side by side.
+    queryClient.invalidateQueries({ queryKey: ["checklist"] });
+  };
 }
 
 export function useUploadDocument() {

@@ -49,6 +49,7 @@ const TONE_MAP: Record<string, StatusTone> = {
   rescheduled: "warning",
 
   // negative
+  request_rejected: "danger",
   lost: "danger",
   offer_declined: "danger",
   visa_rejected: "danger",

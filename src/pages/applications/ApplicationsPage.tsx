@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FileText, Plus, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -26,6 +26,7 @@ import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STAGE_FILTERS,
   applicationLifecycleOf,
+  isUnacceptedRequest,
 } from "@/modules/applications/lifecycle";
 import type { ApplicationRead } from "@/modules/applications/types";
 import { StudentNameCell } from "@/modules/users/StudentNameCell";
@@ -62,7 +63,13 @@ export function ApplicationsPage() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
   const canManage = isManagerRole(role) || role === UserRole.COUNSELLOR;
-  const [status, setStatus] = useState<string>("all");
+  // Seeded from `?status=` so the dashboard's "View all" links (for example
+  // the new-requests card) land on the list already filtered.
+  const [searchParams] = useSearchParams();
+  const [status, setStatus] = useState<string>(() => {
+    const requested = searchParams.get("status");
+    return requested && APPLICATION_STAGE_FILTERS.some((f) => f.value === requested) ? requested : "all";
+  });
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(1);
@@ -135,9 +142,11 @@ export function ApplicationsPage() {
       (Object.values(ApplicationStatus) as ApplicationStatus[]).map((value) => ({
         value,
         label: APPLICATION_STATUS_LABELS[value],
-        disabledReason: (statusRequirements ?? []).some((r) => r.status === value)
-          ? "Needs a date and a letter — open the application to record it"
-          : undefined,
+        disabledReason: isUnacceptedRequest(value)
+          ? "Only a student can request an application"
+          : (statusRequirements ?? []).some((r) => r.status === value)
+            ? "Needs a date and a letter — open the application to record it"
+            : undefined,
       })),
     [statusRequirements],
   );
@@ -181,6 +190,19 @@ export function ApplicationsPage() {
         cell: ({ row }) => {
           const application = row.original;
           const cycle = applicationLifecycleOf(application.status);
+          // A request nobody has accepted cannot be moved from here — accepting
+          // or rejecting it, on the application itself, is the only action.
+          if (isUnacceptedRequest(application.status)) {
+            return (
+              <div className="min-w-0">
+                <LifecycleRail steps={APPLICATION_PHASES} index={cycle.index} ended={cycle.ended} />
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {cycle.statusLabel}
+                  {application.status === ApplicationStatus.REQUESTED ? " · awaiting review" : ""}
+                </p>
+              </div>
+            );
+          }
           return (
             <div className="min-w-0">
               <LifecycleRail steps={APPLICATION_PHASES} index={cycle.index} ended={cycle.ended} />
@@ -210,6 +232,10 @@ export function ApplicationsPage() {
         size: 170,
         cell: ({ row }) => {
           const id = row.original.counsellor_id;
+          // No assigning until the request is accepted.
+          if (isUnacceptedRequest(row.original.status)) {
+            return id ? <StaffNameCell userId={id} /> : <span className="text-muted-foreground">—</span>;
+          }
           if (id) {
             return canManage ? (
               <button

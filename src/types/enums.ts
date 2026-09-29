@@ -179,6 +179,9 @@ export const ApplicationStatus = {
   /** A student asked; nobody has agreed yet. See the backend enum for why this
    * is not `draft`. */
   REQUESTED: "requested",
+  /** A counsellor declined the request, with feedback the student can act on.
+   * Out of the working list; can still be accepted later. */
+  REQUEST_REJECTED: "request_rejected",
   DRAFT: "draft",
   DOCUMENTS_PENDING: "documents_pending",
   READY_TO_SUBMIT: "ready_to_submit",

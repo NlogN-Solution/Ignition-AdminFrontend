@@ -42,6 +42,12 @@ interface ApplicationHeaderProps {
   updatedAt: string;
   canManage: boolean;
   canDelete: boolean;
+  /**
+   * False while this is a student's request nobody has accepted. Editing,
+   * changing status, assigning and deleting are all withheld until then — the
+   * backend refuses them — so the menu offers only what still makes sense.
+   */
+  isAccepted: boolean;
   onBack: () => void;
   onEdit: () => void;
   onChangeStatus: () => void;
@@ -61,6 +67,7 @@ export function ApplicationHeader({
   updatedAt,
   canManage,
   canDelete,
+  isAccepted,
   onBack,
   onEdit,
   onChangeStatus,
@@ -113,58 +120,65 @@ export function ApplicationHeader({
           <div className="flex items-center gap-2">
             <StatusBadge status={status} className="px-2.5 py-1 text-[13px]" />
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  Actions
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onSelect={onEdit} disabled={!canManage}>
-                  <Pencil className="h-3.5 w-3.5" /> Edit application
-                </DropdownMenuItem>
+            {/* No actions at all on a request nobody has accepted: edit, status,
+                advisor and delete are all refused by the backend until then, and
+                the decision lives on the Overview. */}
+            {isAccepted ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    Actions
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onSelect={onEdit} disabled={!canManage}>
+                    <Pencil className="h-3.5 w-3.5" /> Edit application
+                  </DropdownMenuItem>
 
-                {/*
-                  A plain item opening a dialog, not a submenu.
+                  {/*
+                    A plain item opening a dialog, not a submenu.
 
-                  This was a `DropdownMenuSub` listing all fourteen statuses.
-                  The submenu opened and the items rendered, but selecting one
-                  did nothing at all — no request, no toast — because Radix's
-                  nested SubContent never dispatched `onSelect` here. Rather
-                  than chase that, it now opens `ChangeStatusDialog`, which was
-                  already built for the removed Quick Actions card: one status
-                  flow instead of two, and it carries the optional reason that a
-                  submenu of bare labels could never collect.
-                */}
-                <DropdownMenuItem onSelect={onChangeStatus} disabled={!canManage}>
-                  <RefreshCw className="h-3.5 w-3.5" /> Change status…
-                </DropdownMenuItem>
+                    This was a `DropdownMenuSub` listing all fourteen statuses.
+                    The submenu opened and the items rendered, but selecting one
+                    did nothing at all — no request, no toast — because Radix's
+                    nested SubContent never dispatched `onSelect` here. Rather
+                    than chase that, it now opens `ChangeStatusDialog`, which was
+                    already built for the removed Quick Actions card: one status
+                    flow instead of two, and it carries the optional reason that a
+                    submenu of bare labels could never collect.
+                  */}
+                  <DropdownMenuItem onSelect={onChangeStatus} disabled={!canManage}>
+                    <RefreshCw className="h-3.5 w-3.5" /> Change status…
+                  </DropdownMenuItem>
 
-                <DropdownMenuItem onSelect={onAssignAdvisor} disabled={!canManage}>
-                  <UserPlus className="h-3.5 w-3.5" /> Assign advisor
-                </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={onAssignAdvisor} disabled={!canManage}>
+                    <UserPlus className="h-3.5 w-3.5" /> Assign advisor
+                  </DropdownMenuItem>
 
-                <DropdownMenuItem onSelect={onCopyRef}>
-                  <Copy className="h-3.5 w-3.5" /> Copy application ID
-                </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={onCopyRef}>
+                    <Copy className="h-3.5 w-3.5" /> Copy application ID
+                  </DropdownMenuItem>
 
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">
-                      Irreversible
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onSelect={onDelete}
-                      className="text-danger focus:bg-danger/10 focus:text-danger"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete application
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  {canDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">
+                        Irreversible
+                      </DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onSelect={onDelete}
+                        className="text-danger focus:bg-danger/10 focus:text-danger"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete application
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <span className="text-[12.5px] text-muted-foreground">Accept or reject to unlock actions</span>
+            )}
           </div>
 
           <p className="text-[12.5px] text-muted-foreground">Updated {formatDateTime(updatedAt)}</p>

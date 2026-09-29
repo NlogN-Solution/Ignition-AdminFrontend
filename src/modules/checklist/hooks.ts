@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/constants/queryKeys";
 import { getErrorMessage } from "@/utils/errors";
 import { checklistService } from "./service";
 import type { ApplicationChecklistItemCreatePayload, ApplicationChecklistItemUpdatePayload } from "./types";
@@ -33,7 +34,12 @@ export function useUpdateChecklistItem(applicationId: string) {
   return useMutation({
     mutationFn: ({ itemId, payload }: { itemId: string; payload: ApplicationChecklistItemUpdatePayload }) =>
       checklistService.update(applicationId, itemId, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.list(applicationId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.list(applicationId) });
+      // Verifying or rejecting an item mirrors onto its document, which the
+      // same Documents tab lists in full.
+      queryClient.invalidateQueries({ queryKey: queryKeys.documents.all });
+    },
     onError: (error) => toast.error(getErrorMessage(error, "Couldn't update item")),
   });
 }

@@ -150,12 +150,26 @@ export function useChangeApplicationStatusById() {
 export function useAcceptApplicationRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => applicationService.acceptRequest(id),
-    onSuccess: (_data, id) => {
+    mutationFn: ({ id, feedback }: { id: string; feedback?: string }) => applicationService.acceptRequest(id, feedback),
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.applications.statusHistory(id) });
       toast.success("Request accepted — the application is now being prepared");
     },
     onError: (error) => toast.error(getErrorMessage(error, "Couldn't accept the request")),
+  });
+}
+
+/** Rejecting a student's request, with the feedback the student is shown. */
+export function useRejectApplicationRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, feedback }: { id: string; feedback: string }) => applicationService.rejectRequest(id, feedback),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.applications.statusHistory(id) });
+      toast.success("Request rejected — the student has been told what is needed");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Couldn't reject the request")),
   });
 }

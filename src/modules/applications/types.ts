@@ -29,6 +29,12 @@ export interface ApplicationRead {
   condition_deadline: string | null;
   /** Staff-written, student-facing notice; one point per line. */
   student_notice: string | null;
+  /** The counsellor's feedback when accepting or rejecting a student's request — shown to the student. */
+  review_feedback: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  /** When the student finished the apply flow and sent the request. */
+  request_submitted_at: string | null;
   created_at: string;
   updated_at: string;
 }

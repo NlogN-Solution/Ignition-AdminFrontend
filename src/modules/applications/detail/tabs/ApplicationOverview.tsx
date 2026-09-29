@@ -1,4 +1,5 @@
 import type { ApplicationRead, StatusRequirement } from "@/modules/applications/types";
+import { isUnacceptedRequest } from "@/modules/applications/lifecycle";
 import { ApplicationStatus } from "@/types/enums";
 import { ApplicationSnapshot } from "../overview/ApplicationSnapshot";
 import { AcceptRequest } from "../overview/AcceptRequest";
@@ -37,7 +38,9 @@ export function ApplicationOverview({
   onAssignAdvisor,
   onRecordMilestone,
   onAcceptRequest,
+  onRejectRequest,
   isAccepting,
+  isRejecting,
 }: {
   application: ApplicationRead;
   programName: string | null;
@@ -48,15 +51,27 @@ export function ApplicationOverview({
   onEdit: () => void;
   onAssignAdvisor: () => void;
   onRecordMilestone: (status: ApplicationStatus) => void;
-  onAcceptRequest: () => void;
+  onAcceptRequest: (feedback: string, done: () => void) => void;
+  onRejectRequest: (feedback: string, done: () => void) => void;
   isAccepting: boolean;
+  isRejecting: boolean;
 }) {
+  // Until a request is accepted there is nothing to edit or record — the
+  // decision is the only action, and the backend refuses the rest.
+  const isUnaccepted = isUnacceptedRequest(application.status);
+
   return (
     <div className="space-y-4">
       {/* Above the snapshot, because until this is answered the snapshot is a
           description of a file nobody has agreed to open. */}
-      {canManage && application.status === ApplicationStatus.REQUESTED && (
-        <AcceptRequest onAccept={onAcceptRequest} isAccepting={isAccepting} />
+      {canManage && isUnaccepted && (
+        <AcceptRequest
+          application={application}
+          onAccept={onAcceptRequest}
+          onReject={onRejectRequest}
+          isAccepting={isAccepting}
+          isRejecting={isRejecting}
+        />
       )}
 
       <ApplicationSnapshot
@@ -64,12 +79,12 @@ export function ApplicationOverview({
         programName={programName}
         universityName={universityName}
         applicantPhone={applicantPhone}
-        canManage={canManage}
+        canManage={canManage && !isUnaccepted}
         onEdit={onEdit}
         onAssignAdvisor={onAssignAdvisor}
       />
 
-      {canManage && (
+      {canManage && !isUnaccepted && (
         <MilestoneEvidence
           application={application}
           requirements={requirements}
