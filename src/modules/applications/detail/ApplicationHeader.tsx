@@ -177,7 +177,7 @@ export function ApplicationHeader({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <span className="text-[12.5px] text-muted-foreground">Accept or reject to unlock actions</span>
+              <span className="text-[12.5px] text-muted-foreground"></span>
             )}
           </div>
 
