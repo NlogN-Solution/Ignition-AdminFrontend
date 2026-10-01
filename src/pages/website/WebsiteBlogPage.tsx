@@ -16,7 +16,7 @@ export function WebsiteBlogPage() {
       description="Articles shown under /resources/blog on the public site. Only published articles appear there."
       kinds={["post"]}
       icon={Newspaper}
-      newLabel="New article"
+      newLabel="New Blog"
       editorBase="/website/blog"
     />
   );

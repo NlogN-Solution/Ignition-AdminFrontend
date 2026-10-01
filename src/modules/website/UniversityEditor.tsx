@@ -794,14 +794,24 @@ export function UniversityEditor({
             </TabsContent>
 
             <TabsContent value="media" className="space-y-4 pt-4">
-              <Field label="Logo URL"><Input {...register("logo_url")} placeholder="https://…" /></Field>
-              <Field label="Hero image URL"><Input {...register("hero_image")} placeholder="https://…" /></Field>
-              <Field label="Card image URL"><Input {...register("card_image")} placeholder="https://…" /></Field>
-              <Field label="Flyer" hint="The PDF the workbook links to.">
+              <Field label="Logo URL" hint="Replaces the initials on cards and page headers (website and student portal).">
+                <Input {...register("logo_url")} placeholder="https://…" />
+              </Field>
+              <MediaPreview url={values.logo_url} shape="logo" />
+              <Field label="Hero image URL" hint="The wide photograph behind the university page header. Used for the card too if no card image is set.">
+                <Input {...register("hero_image")} placeholder="https://…" />
+              </Field>
+              <MediaPreview url={values.hero_image} shape="wide" />
+              <Field label="Card image URL" hint="The photograph on the university card in listings. Used for the header too if no hero image is set.">
+                <Input {...register("card_image")} placeholder="https://…" />
+              </Field>
+              <MediaPreview url={values.card_image} shape="card" />
+              <Field label="Flyer" hint="A PDF brochure. Shown as a “University brochure” download button on the university page.">
                 <Input {...register("flyer_url")} placeholder="https://…" />
               </Field>
               <p className="text-xs text-muted-foreground">
-                Upload files on the Media page, then paste the URL here.
+                Paste a direct https:// link to the image file — e.g. the university's own site, or upload on the
+                Media page and paste the URL. If a preview doesn't appear, the link isn't a direct image link.
               </p>
             </TabsContent>
 
@@ -951,3 +961,31 @@ function DraftCourseList({
 }
 
 export { PUBLISH_REQUIRED };
+
+/** A live look at a pasted image URL, so a dead or non-image link is caught before saving. */
+function MediaPreview({ url, shape }: { url?: string; shape: "logo" | "wide" | "card" }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+  const src = url?.trim();
+  if (!src) return null;
+  if (failed || !/^https?:\/\//i.test(src)) {
+    return (
+      <p className="-mt-2 flex items-center gap-1.5 text-xs text-destructive">
+        <AlertTriangle className="h-3.5 w-3.5" /> This link doesn't load as an image.
+      </p>
+    );
+  }
+  const box = {
+    logo: "h-16 w-16 rounded-full object-contain p-2",
+    wide: "h-28 w-full max-w-md object-cover",
+    card: "h-28 w-48 object-cover",
+  }[shape];
+  return (
+    <img
+      src={src}
+      alt=""
+      onError={() => setFailed(true)}
+      className={cn("-mt-2 rounded-md border border-border bg-white", box)}
+    />
+  );
+}
