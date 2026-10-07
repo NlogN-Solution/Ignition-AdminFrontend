@@ -36,6 +36,7 @@ import { AssignAdvisorDialog } from "@/modules/applications/detail/AssignAdvisor
 import { ChangeStatusDialog } from "@/modules/applications/detail/ChangeStatusDialog";
 import { EditApplicationDialog } from "@/modules/applications/detail/EditApplicationDialog";
 import { RecordMilestoneDialog } from "@/modules/applications/detail/RecordMilestoneDialog";
+import { JourneyWorkspace } from "@/modules/application-journey/JourneyWorkspace";
 import { ApplicationActivity } from "@/modules/applications/detail/tabs/ApplicationActivity";
 import { applicationReference } from "@/modules/applications/reference";
 import { isUnacceptedRequest } from "@/modules/applications/lifecycle";
@@ -251,6 +252,16 @@ export function ApplicationDetailPage() {
               }
               isAccepting={acceptRequest.isPending}
               isRejecting={rejectRequest.isPending}
+            />
+          )}
+
+          {tab === "journey" && (
+            <JourneyWorkspace
+              applicationId={application.id}
+              studentId={application.student_id}
+              canManage={canManage && isAccepted}
+              onRecordMilestone={setMilestoneStatus}
+              onOpenDocuments={() => goToTab("documents")}
             />
           )}
 

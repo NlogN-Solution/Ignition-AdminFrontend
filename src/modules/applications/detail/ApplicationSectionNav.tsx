@@ -1,4 +1,4 @@
-import { Activity, Clock, FileText, Home, MessageSquare, NotebookPen, UserRound, type LucideIcon } from "lucide-react";
+import { Activity, Clock, FileText, Home, MessageSquare, NotebookPen, Route, UserRound, type LucideIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +33,14 @@ import { cn } from "@/lib/utils";
  * qualifications and work history were reachable only from a slide-over on the
  * lead page, one search away from the application being worked.
  */
+/**
+ * Journey is back, and not as the rail it was. It is now where staff *work*
+ * the UK student journey — verify review rounds, offer interview slots,
+ * record outcomes — which the Overview's phase snapshot cannot do.
+ */
 export const APPLICATION_TABS = [
   { value: "overview", label: "Overview", icon: Home },
+  { value: "journey", label: "Journey", icon: Route },
   { value: "profile", label: "Applicant profile", icon: UserRound },
   { value: "documents", label: "Documents", icon: FileText },
   { value: "status", label: "Status History", icon: Clock },

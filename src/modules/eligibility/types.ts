@@ -93,6 +93,8 @@ export interface EligibilityListParams {
   assigned_to?: string;
   study_level?: string;
   unassigned?: boolean;
+  /** One lead's assessments — what the lead page uses to link back. */
+  lead_id?: string;
   sort?: string;
 }
 

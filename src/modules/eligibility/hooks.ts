@@ -20,6 +20,20 @@ export function useEligibilityAssessments(params: EligibilityListParams = {}) {
   });
 }
 
+/**
+ * The newest eligibility assessment behind a lead, or null if the lead did not
+ * come from the eligibility wizard. The lead page's way back to the
+ * assessment, mirroring the assessment page's "Open full lead record".
+ */
+export function useLeadEligibilityAssessment(leadId: string | undefined, enabled = true) {
+  const params: EligibilityListParams = { lead_id: leadId, limit: 1, sort: "newest" };
+  return useQuery({
+    queryKey: queryKeys.eligibility.list(params),
+    queryFn: async () => (await eligibilityService.list(params)).items[0] ?? null,
+    enabled: Boolean(leadId) && enabled,
+  });
+}
+
 export function useEligibilityStats() {
   return useQuery({
     queryKey: queryKeys.eligibility.stats,

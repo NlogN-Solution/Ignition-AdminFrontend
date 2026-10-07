@@ -1,4 +1,8 @@
 import type { DocumentType } from "@/types/enums";
+import type { StageConfig, StageKind } from "@/modules/application-journey/types";
+
+/** When a stage document applies: undergraduate, postgraduate, or a study gap over six months. */
+export type RequirementCondition = "ug" | "pg" | "gap";
 
 export interface WorkflowStageDocumentRequirementRead {
   id: string;
@@ -6,6 +10,7 @@ export interface WorkflowStageDocumentRequirementRead {
   document_type: DocumentType | null;
   custom_label: string | null;
   is_required: boolean;
+  condition: RequirementCondition | null;
   created_at: string;
   updated_at: string;
 }
@@ -14,6 +19,7 @@ export interface WorkflowStageDocumentRequirementPayload {
   document_type?: DocumentType | null;
   custom_label?: string | null;
   is_required?: boolean;
+  condition?: RequirementCondition | null;
 }
 
 export interface WorkflowStageRead {
@@ -27,6 +33,8 @@ export interface WorkflowStageRead {
   icon: string | null;
   order: number;
   is_active: boolean;
+  kind: StageKind;
+  config: StageConfig;
   created_at: string;
   updated_at: string;
   document_requirements: WorkflowStageDocumentRequirementRead[];
@@ -40,6 +48,8 @@ export interface WorkflowStagePayload {
   color?: string | null;
   icon?: string | null;
   is_active?: boolean;
+  kind?: StageKind;
+  config?: StageConfig;
 }
 
 export interface WorkflowTemplateRead {

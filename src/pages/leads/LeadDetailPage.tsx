@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   ArrowLeft,
   ArrowRightCircle,
@@ -27,6 +27,7 @@ import {
   UserSquare2,
   Wallet,
   XCircle,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ import { UserPicker } from "@/components/shared/UserPicker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBreadcrumbStore } from "@/hooks/useBreadcrumbStore";
 import { useQueryFlagDialog } from "@/hooks/useQueryFlagDialog";
+import { useLeadEligibilityAssessment } from "@/modules/eligibility/hooks";
 import { useAuthStore } from "@/services/authStore";
 import { canAccessModule, canBrowseApplicants, isManagerRole } from "@/constants/permissions";
 import { StaffNameCell } from "@/modules/users/StaffNameCell";
@@ -136,6 +138,7 @@ export function LeadDetailPage() {
 
   const queryClient = useQueryClient();
   const { data: lead, isLoading, error, refetch } = useLead(leadId);
+  const { data: eligibilityAssessment } = useLeadEligibilityAssessment(leadId, canAccessModule(role, "eligibility"));
   const changeStatus = useChangeLeadStatus(leadId ?? "");
   const qualifyLead = useQualifyLead(leadId ?? "");
   const assignLead = useAssignLead(leadId ?? "");
@@ -273,6 +276,16 @@ export function LeadDetailPage() {
 
         {canManage && (
           <div className="flex items-center gap-2">
+            {/* The way back to the wizard submission this lead came from — the
+                counterpart of "Open full lead record" on the assessment page. */}
+            {eligibilityAssessment && (
+              <Button size="sm" variant="outline" asChild>
+                <Link to={`/eligibility/${eligibilityAssessment.id}`}>
+                  <ClipboardCheck className="h-3.5 w-3.5" /> Open eligibility assessment
+                </Link>
+              </Button>
+            )}
+
             {/* One forward action at a time — the stage decides which. */}
             {stage === "raw" && (
               <Button size="sm" onClick={() => qualifyLead.mutate(undefined)} disabled={qualifyLead.isPending}>

@@ -33,7 +33,13 @@ function useInvalidateApplications() {
   const queryClient = useQueryClient();
   return (id?: string) => {
     queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
-    if (id) queryClient.invalidateQueries({ queryKey: queryKeys.applications.statusHistory(id) });
+    if (id) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.applications.statusHistory(id) });
+      // A status change can complete a journey stage (an offer or a CAS) and
+      // advance the workflow — see `sync_journey_on_status_change`.
+      queryClient.invalidateQueries({ queryKey: ["application-journey", id] });
+      queryClient.invalidateQueries({ queryKey: ["application-workflow", id] });
+    }
   };
 }
 

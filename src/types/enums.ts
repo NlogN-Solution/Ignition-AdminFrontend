@@ -144,6 +144,10 @@ export const DocumentType = {
   FINANCIAL_DOCUMENT: "financial_document",
   MEDICAL_REPORT: "medical_report",
   PHOTO: "photo",
+  MEDIUM_OF_INSTRUCTION: "medium_of_instruction",
+  GAP_EXPLANATION: "gap_explanation",
+  /** The one media type: a student's practice-interview video (UK journey). */
+  INTERVIEW_RECORDING: "interview_recording",
   OTHER: "other",
 } as const;
 export type DocumentType = (typeof DocumentType)[keyof typeof DocumentType];
@@ -220,6 +224,8 @@ export const AppointmentType = {
   PHONE_CALL: "phone_call",
   VIDEO_CALL: "video_call",
   OFFICE_VISIT: "office_visit",
+  UNIVERSITY_MOCK_INTERVIEW: "university_mock_interview",
+  SUITABILITY_INTERVIEW: "suitability_interview",
   OTHER: "other",
 } as const;
 export type AppointmentType = (typeof AppointmentType)[keyof typeof AppointmentType];
@@ -336,6 +342,12 @@ export const WorkflowActivityType = {
   ASSIGNED: "assigned",
   DOCUMENT_LINKED: "document_linked",
   COMMENT: "comment",
+  SUBMISSION: "submission",
+  REVIEW: "review",
+  SLOTS_PUBLISHED: "slots_published",
+  SLOT_BOOKED: "slot_booked",
+  OUTCOME: "outcome",
+  TASK_TICKED: "task_ticked",
 } as const;
 export type WorkflowActivityType = (typeof WorkflowActivityType)[keyof typeof WorkflowActivityType];
 
