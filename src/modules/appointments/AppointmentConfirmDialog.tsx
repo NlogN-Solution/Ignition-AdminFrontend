@@ -74,7 +74,7 @@ export function AppointmentConfirmDialog({
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="top-4 max-h-[calc(100dvh-2rem)] -translate-y-0 overflow-y-auto sm:top-[5vh] sm:max-h-[90dvh] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Confirm appointment request</DialogTitle>
         </DialogHeader>

@@ -13,6 +13,7 @@ import { ThreadComposer } from "./ThreadComposer";
 import { ThreadTimeline } from "./ThreadTimeline";
 import { useCreateThread, useReplyToThread, useThread } from "./hooks";
 import type { Thread } from "./types";
+import { DeleteThreadButton } from "./DeleteThreadButton";
 
 /**
  * Correspondence for one person or one application, as a tab.
@@ -130,6 +131,7 @@ export function ThreadPanel({
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h3 className="text-[14px] font-semibold text-foreground">{thread.subject}</h3>
                   <span className="text-xs text-muted-foreground">{thread.participant.stage}</span>
+                  <DeleteThreadButton threadId={thread.id} onDeleted={() => setSelectedId(null)} />
                 </div>
                 {thread.visibility === "internal" && (
                   <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-warning/10 px-2 py-1 text-[11.5px] font-medium text-warning">

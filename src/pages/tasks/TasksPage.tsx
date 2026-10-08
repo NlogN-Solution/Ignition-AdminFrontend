@@ -17,8 +17,15 @@ import type { TaskRead } from "@/modules/tasks/types";
 import { TaskPriority, TaskStatus } from "@/types/enums";
 import { formatDate, toTitleCase } from "@/utils/format";
 import { cn } from "@/lib/utils";
+import { UserPicker } from "@/components/shared/UserPicker";
+import { PriorityTasksCard } from "@/modules/priority-tasks/PriorityTasksCard";
+import { useAuthStore } from "@/services/authStore";
+import { UserRole } from "@/types/enums";
 
 export function TasksPage() {
+  const role = useAuthStore((state) => state.user?.role);
+  const [studentId, setStudentId] = useState<string>();
+  const canAssignStudentTasks = role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN || role === UserRole.COUNSELLOR || role === UserRole.ADMISSIONS;
   const [view, setView] = useState<"board" | "table">("board");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -83,6 +90,13 @@ export function TasksPage() {
           </>
         }
       />
+
+      {canAssignStudentTasks && <section className="mb-6 space-y-3 rounded-xl border border-border bg-card p-4" aria-label="Assign student checklist">
+        <h2 className="font-semibold">Student checklist</h2>
+        <p className="text-sm text-muted-foreground">Select a student to assign tasks. They appear in My Checklist and the student's dashboard next-step card.</p>
+        <UserPicker value={studentId} onChange={setStudentId} role={UserRole.STUDENT} placeholder="Select a student…" />
+        {studentId && <PriorityTasksCard key={studentId} studentId={studentId} />}
+      </section>}
 
       <div className="mb-3">
         <ListToolbar

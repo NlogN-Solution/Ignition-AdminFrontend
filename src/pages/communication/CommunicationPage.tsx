@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThreadComposer } from "@/modules/communication/ThreadComposer";
 import { ThreadTimeline } from "@/modules/communication/ThreadTimeline";
+import { DeleteThreadButton } from "@/modules/communication/DeleteThreadButton";
 import { useInbox, useReplyToThread, useThread } from "@/modules/communication/hooks";
 import { formatRelativeTime } from "@/utils/format";
 import { cn } from "@/lib/utils";
@@ -165,6 +166,7 @@ export function CommunicationPage() {
                 <span className="text-xs text-muted-foreground">
                   {thread.message_count} {thread.message_count === 1 ? "message" : "messages"}
                 </span>
+                <DeleteThreadButton threadId={thread.id} onDeleted={() => setSelectedId(null)} />
               </div>
 
               <div className="mt-4 max-h-[calc(100vh-24rem)] overflow-y-auto pr-1">

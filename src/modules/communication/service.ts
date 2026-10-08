@@ -12,6 +12,9 @@ import type { Thread, ThreadCreatePayload, ThreadDetail, ThreadReplyPayload } fr
  * is exactly how the two halves of a history drifted apart before.
  */
 export const communicationService = {
+  async delete(threadId: string): Promise<void> {
+    await apiClient.delete(`/communication/threads/${threadId}`);
+  },
   async inbox(params: { search?: string; unread_only?: boolean; page?: number; limit?: number }) {
     const { data } = await apiClient.get<ListResponse<Thread>>("/communication/threads", { params });
     return data;

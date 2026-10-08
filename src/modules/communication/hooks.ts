@@ -75,6 +75,27 @@ export function useCreateThread() {
   });
 }
 
+export function useDeleteThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: string) => communicationService.delete(threadId),
+    onSuccess: async (_, threadId) => {
+      queryClient.setQueriesData({ queryKey: communicationKeys.all }, (data: unknown) => {
+        if (Array.isArray(data)) return data.filter((thread) => thread.id !== threadId);
+        if (data && typeof data === "object" && "items" in data && Array.isArray(data.items)) {
+          const items = data.items.filter((thread: { id: string }) => thread.id !== threadId);
+          return { ...data, items, ...("total" in data && typeof data.total === "number" ? { total: data.total - (data.items.length - items.length) } : {}) };
+        }
+        return data;
+      });
+      queryClient.removeQueries({ queryKey: communicationKeys.thread(threadId) });
+      await queryClient.invalidateQueries({ queryKey: communicationKeys.all });
+      toast.success("Conversation deleted");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Couldn't delete this conversation")),
+  });
+}
+
 export function useReplyToThread(threadId: string) {
   const queryClient = useQueryClient();
   return useMutation({

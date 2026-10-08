@@ -3,6 +3,7 @@ export interface PriorityTaskRead {
   id: string;
   title: string;
   description: string | null;
+  stage: string | null;
   due_date: string | null;
   is_complete: boolean;
   completed_at: string | null;
@@ -13,12 +14,14 @@ export interface PriorityTaskRead {
 }
 
 export interface PriorityTaskCreatePayload {
+  stage?: string | null;
   title: string;
   description?: string | null;
   due_date?: string | null;
 }
 
 export interface PriorityTaskUpdatePayload {
+  stage?: string | null;
   title?: string;
   description?: string | null;
   due_date?: string | null;

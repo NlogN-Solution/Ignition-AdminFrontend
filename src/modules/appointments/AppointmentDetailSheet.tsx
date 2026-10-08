@@ -63,7 +63,7 @@ export function AppointmentDetailSheet({
             </div>
           </SheetHeader>
 
-          <div className="flex-1 space-y-5 overflow-y-auto px-4">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <Field icon={Calendar} label="Type" value={toTitleCase(appointment.appointment_type)} />
               <Field label="Applicant" value={<StudentNameCell userId={appointment.student_id} />} />

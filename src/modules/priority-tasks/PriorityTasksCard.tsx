@@ -29,13 +29,13 @@ export function PriorityTasksCard({ studentId }: { studentId: string }) {
   const deleteTask = useDeletePriorityTask(studentId);
 
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ title: "", description: "", due_date: "" });
+  const [draft, setDraft] = useState({ title: "", description: "", due_date: "", stage: "" });
 
   const open = (tasks ?? []).filter((task) => !task.is_complete);
   const done = (tasks ?? []).filter((task) => task.is_complete);
 
   function reset() {
-    setDraft({ title: "", description: "", due_date: "" });
+    setDraft({ title: "", description: "", due_date: "", stage: "" });
     setAdding(false);
   }
 
@@ -43,7 +43,7 @@ export function PriorityTasksCard({ studentId }: { studentId: string }) {
     const title = draft.title.trim();
     if (!title) return;
     createTask.mutate(
-      { title, description: draft.description.trim() || null, due_date: draft.due_date || null },
+      { title, description: draft.description.trim() || null, due_date: draft.due_date || null, stage: draft.stage || null },
       { onSuccess: reset },
     );
   }
@@ -52,11 +52,11 @@ export function PriorityTasksCard({ studentId }: { studentId: string }) {
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-          <ListTodo className="h-4 w-4 text-primary" /> Priority tasks
+          <ListTodo className="h-4 w-4 text-primary" /> Student checklist
         </h2>
         {!adding && (
           <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setAdding(true)}>
-            <Plus className="h-3.5 w-3.5" /> Add
+            <Plus className="h-3.5 w-3.5" /> Assign task
           </Button>
         )}
       </div>
@@ -80,6 +80,18 @@ export function PriorityTasksCard({ studentId }: { studentId: string }) {
             value={draft.description}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
           />
+          <label className="block space-y-1 text-xs text-muted-foreground">
+            <span>Journey category</span>
+            <select aria-label="Journey category" value={draft.stage} onChange={(event) => setDraft((d) => ({ ...d, stage: event.target.value }))} className="h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground">
+              <option value="">General</option>
+              <option value="Documents">Documents</option>
+              <option value="Application">Application</option>
+              <option value="Offer">Offer</option>
+              <option value="Interview preparation">Interview preparation</option>
+              <option value="Visa">Visa</option>
+              <option value="Pre-departure">Pre-departure</option>
+            </select>
+          </label>
           <div className="flex items-center gap-2">
             <Input
               type="date"
@@ -138,6 +150,7 @@ export function PriorityTasksCard({ studentId }: { studentId: string }) {
                     </span>
                   )}
                   {task.assigned_by_name && <span>by {task.assigned_by_name}</span>}
+                  {task.stage && <span>{task.stage}</span>}
                 </p>
               </div>
               <button
