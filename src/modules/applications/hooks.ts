@@ -33,6 +33,7 @@ function useInvalidateApplications() {
   const queryClient = useQueryClient();
   return (id?: string) => {
     queryClient.invalidateQueries({ queryKey: queryKeys.applications.all });
+    queryClient.invalidateQueries({ queryKey: ["workflow-steps"] });
     if (id) {
       queryClient.invalidateQueries({ queryKey: queryKeys.applications.statusHistory(id) });
       // A status change can complete a journey stage (an offer or a CAS) and
@@ -118,8 +119,8 @@ export function useDeleteApplication() {
   const invalidate = useInvalidateApplications();
   return useMutation({
     mutationFn: (id: string) => applicationService.remove(id),
-    onSuccess: () => {
-      invalidate();
+    onSuccess: (_data, id) => {
+      invalidate(id);
       toast.success("Application deleted");
     },
     onError: (error) => toast.error(getErrorMessage(error, "Couldn't delete application")),
