@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Repeater, str } from "./BlockFields";
 import { CONTENT_KINDS, CONTENT_KIND_LABELS, type ContentKind, type ContentPageRead } from "./contentTypes";
 import { useCreateContentPage, useUpdateContentPage } from "./contentHooks";
+import { keywordInputs, keywordSeo } from "./keywordSeo";
 
 /**
  * Everything about a page except its blocks.
@@ -37,6 +38,8 @@ const EMPTY = {
   seo_description: "",
   seo_og_image: "",
   seo_noindex: false,
+  primary_keyword: "",
+  secondary_keywords: "",
   source_label: "",
   source_href: "",
   is_published: false,
@@ -64,6 +67,7 @@ function toForm(page: ContentPageRead): FormState {
     seo_description: str(seo, "description"),
     seo_og_image: str(seo, "ogImage"),
     seo_noindex: Boolean(seo.noindex),
+    ...keywordInputs(seo),
     source_label: page.source?.label ?? "",
     source_href: page.source?.href ?? "",
     is_published: page.is_published,
@@ -115,13 +119,14 @@ export function ContentPageSheet({
       image: form.hero_image.trim(),
     };
     const seo = {
+      ...keywordSeo(page?.seo, form.primary_keyword, form.secondary_keywords),
       title: form.seo_title.trim(),
       description: form.seo_description.trim(),
       ogImage: form.seo_og_image.trim(),
       noindex: form.seo_noindex,
     };
     const hasHero = Object.values(hero).some(Boolean);
-    const hasSeo = form.seo_noindex || [seo.title, seo.description, seo.ogImage].some(Boolean);
+    const hasSeo = Object.values(seo).some((value) => Array.isArray(value) ? value.length > 0 : Boolean(value));
 
     return {
       key: form.key.trim() || slugify(`${form.kind}-${form.title}`),
@@ -284,6 +289,29 @@ export function ContentPageSheet({
             </TabsContent>
 
             <TabsContent value="seo" className="space-y-4 pt-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="content-primary-keyword" className="text-xs text-muted-foreground">Primary keyword</Label>
+                <Input
+                  id="content-primary-keyword"
+                  value={form.primary_keyword}
+                  placeholder="UK student visa"
+                  maxLength={200}
+                  onChange={(event) => set("primary_keyword", event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">The main search topic this page answers. Use it naturally in the title, opening paragraph and a relevant heading.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="content-secondary-keywords" className="text-xs text-muted-foreground">Secondary keywords</Label>
+                <Textarea
+                  id="content-secondary-keywords"
+                  rows={3}
+                  value={form.secondary_keywords}
+                  placeholder="UK student visa documents, visa financial requirements"
+                  onChange={(event) => set("secondary_keywords", event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Separate related topics with commas or new lines. Cover them where useful; avoid repeating phrases just to add keywords.</p>
+              </div>
+              <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">Keywords are a writing brief, not a ranking guarantee. Saving them does not change your article text or slug. Google does not use the keywords meta tag.</p>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Meta title</Label>
                 <Input

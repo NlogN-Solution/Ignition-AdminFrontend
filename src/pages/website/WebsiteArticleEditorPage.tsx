@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RichTextEditor } from "@/modules/website/RichTextEditor";
+import { keywordInputs, keywordSeo } from "@/modules/website/keywordSeo";
 import { contentService } from "@/modules/website/contentService";
 import { websiteService } from "@/modules/website/service";
 import {
@@ -62,9 +63,11 @@ interface Draft {
   tag: string;
   cover_image_url: string;
   body_html: string;
+  primary_keyword: string;
+  secondary_keywords: string;
 }
 
-const EMPTY: Draft = { title: "", slug: "", excerpt: "", tag: "", cover_image_url: "", body_html: "" };
+const EMPTY: Draft = { title: "", slug: "", excerpt: "", tag: "", cover_image_url: "", body_html: "", primary_keyword: "", secondary_keywords: "" };
 
 const fromPage = (page: ContentPageDetail): Draft => ({
   title: page.title,
@@ -73,6 +76,7 @@ const fromPage = (page: ContentPageDetail): Draft => ({
   tag: page.tag ?? "",
   cover_image_url: page.cover_image_url ?? "",
   body_html: page.body_html ?? "",
+  ...keywordInputs(page.seo),
 });
 
 /**
@@ -82,8 +86,7 @@ const fromPage = (page: ContentPageDetail): Draft => ({
  * console chrome and gives the body the width of the window. It asks only for
  * what the public site shows — title, slug, excerpt, a category, a cover image
  * and the body, written in CKEditor with images uploaded to the media library.
- * The hero, SEO and link tabs of the older block editor are gone from this
- * flow; the site derives all of those from these fields.
+ * Keyword inputs sit beside the slug as a writing brief and save in SEO data.
  */
 export function WebsiteArticleEditorPage({ kind }: { kind: ArticleKind }) {
   const { pageId } = useParams();
@@ -160,6 +163,7 @@ export function WebsiteArticleEditorPage({ kind }: { kind: ArticleKind }) {
     tag: draft.tag.trim() || null,
     cover_image_url: draft.cover_image_url || null,
     body_html: draft.body_html,
+    seo: keywordSeo(page?.seo, draft.primary_keyword, draft.secondary_keywords),
   });
 
   /** Returns the saved page id, or null if saving failed. */
@@ -348,6 +352,30 @@ export function WebsiteArticleEditorPage({ kind }: { kind: ArticleKind }) {
                 {draft.slug || "…"}
               </p>
               {errors.slug && <p className="text-sm text-destructive">{errors.slug}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="primary-keyword">Primary keyword</Label>
+              <Input
+                id="primary-keyword"
+                value={draft.primary_keyword}
+                maxLength={200}
+                onChange={(e) => set("primary_keyword", e.target.value)}
+                placeholder="UK student visa"
+              />
+              <p className="text-[11px] text-muted-foreground">The main topic this {copy.noun} answers. Use it naturally in the title and opening paragraph.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="secondary-keywords">Secondary keywords</Label>
+              <Textarea
+                id="secondary-keywords"
+                rows={3}
+                value={draft.secondary_keywords}
+                onChange={(e) => set("secondary_keywords", e.target.value)}
+                placeholder="visa documents, financial requirements"
+              />
+              <p className="text-[11px] text-muted-foreground">Related topics, separated by commas or new lines. Save to keep your keyword brief.</p>
             </div>
 
             <div className="space-y-1.5">
